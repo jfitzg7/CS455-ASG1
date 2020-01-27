@@ -1,5 +1,6 @@
 package cs455.overlay.transport;
 
+import cs455.overlay.node.Node;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.net.*;
@@ -10,13 +11,11 @@ public class TCPServerThread implements Runnable {
 
     private static Logger LOG = LogManager.getLogger(TCPServerThread.class);
     private ServerSocket serverSocket;
+    private Node node;
 
-    public TCPServerThread(int portNum) throws IOException {
+    public TCPServerThread(int portNum, Node node) throws IOException {
         this.serverSocket = new ServerSocket(portNum);
-    }
-
-    public TCPServerThread(ServerSocket serverSocket) {
-        this.serverSocket = serverSocket;
+        this.node = node;
     }
 
     @Override
@@ -27,7 +26,7 @@ public class TCPServerThread implements Runnable {
                 Socket clientSocket = this.serverSocket.accept();
                 LOG.info("Received a new connection!");
                 LOG.info("starting receiver thread...");
-                (new Thread(new TCPReceiverThread(clientSocket))).start();
+                (new Thread(new TCPReceiverThread(clientSocket, node))).start();
             }
         } catch (IOException e) {
             LOG.error(e.getMessage());
