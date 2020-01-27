@@ -1,12 +1,13 @@
 package cs455.overlay.node;
 
+import cs455.overlay.wireformats.Event;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import cs455.overlay.transport.TCPServerThread;
 
 import java.io.IOException;
 
-public class Registry {
+public class Registry implements Node{
 
     private static Logger LOG = LogManager.getLogger(Registry.class);
 
@@ -18,5 +19,10 @@ public class Registry {
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
+    }
+
+    @Override
+    public void onEvent(Event event) {
+
     }
 }

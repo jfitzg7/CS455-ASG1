@@ -1,5 +1,6 @@
 package cs455.overlay.node;
 
+import cs455.overlay.wireformats.Event;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -7,7 +8,7 @@ import java.io.IOException;
 import java.net.*;
 import cs455.overlay.transport.TCPSender;
 
-public class MessagingNode {
+public class MessagingNode implements Node{
 
     private static Logger LOG = LogManager.getLogger(MessagingNode.class);
 
@@ -21,5 +22,10 @@ public class MessagingNode {
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
+    }
+
+    @Override
+    public void onEvent(Event event) {
+
     }
 }
