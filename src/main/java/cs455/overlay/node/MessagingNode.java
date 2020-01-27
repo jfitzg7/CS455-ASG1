@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.*;
 import cs455.overlay.transport.TCPSender;
 
-public class MessagingNode implements Node{
+public class MessagingNode extends Node{
 
     private static Logger LOG = LogManager.getLogger(MessagingNode.class);
 
