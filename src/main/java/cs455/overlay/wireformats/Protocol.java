@@ -1,7 +1,6 @@
 package cs455.overlay.wireformats;
 
 public interface Protocol {
-    byte UNKNOWN = -1;
     byte OVERLAY_NODE_SENDS_REGISTRATION = 2;
     byte REGISTRY_REPORTS_REGISTRATION_STATUS = 3;
     byte OVERLAY_NODE_SENDS_DEREGISTRATION = 4;
