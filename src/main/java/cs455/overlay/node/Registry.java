@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import cs455.overlay.transport.TCPServerThread;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Registry extends Node implements Protocol {
 
@@ -30,14 +31,20 @@ public class Registry extends Node implements Protocol {
 
     @Override
     public void onEvent(Event event) {
-        if (event.getType() == OVERLAY_NODE_SENDS_REGISTRATION) {
-            LOG.info("Registering new messaging node...");
-        }
-        else if (event.getType() == UNKNOWN) {
-            LOG.warn("Unknown message type received!");
+        if (event != null) {
+            try {
+                if (event.getType() == OVERLAY_NODE_SENDS_REGISTRATION) {
+                    LOG.info("Registering new messaging node...");
+                    LOG.info("bytes received from the OVERLAY_NODE_SENDS_REGISTRATION message: " + Arrays.toString(event.getBytes()));
+                } else {
+                    LOG.error("Something went wrong while reading the event type in onEvent()");
+                }
+            } catch (NullPointerException npe) {
+                LOG.error("A NullPointerException occurred while trying to get the event type");
+            }
         }
         else {
-            LOG.error("Something went wrong while reading the event type in onEvent()");
+            LOG.warn("The event received is null and will not be handled");
         }
     }
 }
