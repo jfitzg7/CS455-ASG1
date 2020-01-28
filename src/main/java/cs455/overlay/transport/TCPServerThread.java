@@ -18,6 +18,10 @@ public class TCPServerThread implements Runnable {
         this.node = node;
     }
 
+    public TCPServerThread(ServerSocket serverSocket) {
+        this.serverSocket = serverSocket;
+    }
+
     @Override
     public void run() {
         LOG.info("Server thread is now running and waiting for client...");
