@@ -17,7 +17,7 @@ public class RandomIDGenerator {
 
     public RandomIDGenerator() {
         availableIDList = Collections.synchronizedList(new ArrayList<>(128));
-        for (int i=0; i < 127; i++) {
+        for (int i=0; i < 128; i++) {
             availableIDList.add(i);
         }
         LOG.debug("Constructed new ID list: " + Arrays.toString(availableIDList.toArray()));
@@ -27,28 +27,27 @@ public class RandomIDGenerator {
         return availableIDList;
     }
 
-    public int[] getCurrentPrimitiveAvailableIDList() {
-        int[] currentIDList = new int[availableIDList.size()];
-        for (int i=0; i < currentIDList.length; i++)
-        {
-            currentIDList[i] = availableIDList.get(i);
-        }
-        return currentIDList;
-    }
-
-    public int getRandomID() {
+    public synchronized int getRandomID() {
         int id = -1;
         Random rand = new Random();
-        if (this.availableIDList.size() > 0){
+        if (availableIDList.size() > 0){
             int index = rand.nextInt(availableIDList.size());
             id = availableIDList.remove(index);
+            LOG.debug("Random ID Chosen: " + id);
+            LOG.debug("availableIDList: " + Arrays.toString(availableIDList.toArray()));
         } else {
             LOG.warn("All valid IDs have already been registered");
         }
         return id;
     }
 
-    public void replaceID() {
-
+    public synchronized boolean replaceID(int id) {
+        if ( !(availableIDList.contains(id)) ) {
+            availableIDList.add(id);
+            return true;
+        } else {
+            LOG.warn("Available ID List already contains the specified ID: " + id);
+            return false;
+        }
     }
 }
