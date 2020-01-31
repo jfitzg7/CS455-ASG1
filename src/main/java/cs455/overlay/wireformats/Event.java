@@ -1,6 +1,11 @@
 package cs455.overlay.wireformats;
 
-public interface Event {
-    byte getType();
-    byte[] getBytes();
+public abstract class Event {
+    byte[] senderIPAddress;
+    public abstract byte getType();
+    public abstract byte[] getBytes();
+
+    public byte[] getSenderIPAddress() {
+        return senderIPAddress;
+    }
 }
