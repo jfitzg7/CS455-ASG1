@@ -2,11 +2,11 @@ package cs455.overlay.util;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import sun.rmi.runtime.Log;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class RegistrationTable {
 
@@ -22,12 +22,14 @@ public class RegistrationTable {
         LOG.debug("The registration table after construction: " + registrationTable);
     }
 
-    public void addNewEntry(LogicalNetworkAddress logicalAddress) {
-        if (hasDuplicateEntry(logicalAddress)) {
+    public synchronized boolean addNewEntry(LogicalNetworkAddress logicalAddress) {
+        if (containsEntry(logicalAddress)) {
             LOG.warn("There is already an entry for the address: " + logicalAddress);
+            return false;
         }
         else if (isTableFull()){
             LOG.warn("The registration table is full and no new entries can be added!");
+            return false;
         }
         else {
             int id = 0;
@@ -35,6 +37,7 @@ public class RegistrationTable {
                 id++;
             }
             LOG.debug("Added a new entry, the registration table is now: " + registrationTable);
+            return true;
         }
     }
 
@@ -43,17 +46,32 @@ public class RegistrationTable {
         return !(registrationTable.containsValue(null));
     }
 
-    private boolean hasDuplicateEntry(LogicalNetworkAddress logicalAddress) {
+    public synchronized boolean removeExistingEntry(int id, LogicalNetworkAddress logicalAddress) {
+        if (!containsEntry(logicalAddress)) {
+            LOG.warn("There is currently no entry in the registration table for " + logicalAddress);
+            return false;
+        }
+        if (registrationTable.replace(id, logicalAddress, null)) {
+            LOG.debug("Removing MessagingNode with id: " + id + " and address: " + logicalAddress);
+            return true;
+        } else {
+            LOG.warn("The address held at the specified ID does not match the address of the MessagingNode that wants to deregister");
+            return false;
+        }
+    }
+
+    public synchronized boolean containsEntry(LogicalNetworkAddress logicalAddress) {
         return registrationTable.containsValue(logicalAddress);
     }
 
-
-    public void removeExistingEntry(int id) {
-        // Set the corresponding value for the ID back to null
-    }
-
-    public boolean containsEntry(LogicalNetworkAddress logicalAddress) {
-        return registrationTable.containsValue(logicalAddress);
+    public synchronized int getID(LogicalNetworkAddress logicalNetworkAddress) {
+        for (Map.Entry<Integer, LogicalNetworkAddress> entry : registrationTable.entrySet()) {
+            if (Objects.equals(logicalNetworkAddress, entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+        LOG.warn("There is no ID assigned to the address: " + logicalNetworkAddress);
+        return -1;
     }
 
 }
