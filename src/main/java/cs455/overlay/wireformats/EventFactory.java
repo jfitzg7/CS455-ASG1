@@ -12,7 +12,7 @@ public class EventFactory implements Protocol {
 
     private static Logger LOG = LogManager.getLogger(EventFactory.class);
 
-    public Event factoryMethod(byte[] data) {
+    public Event factoryMethod(byte[] senderIPAddress, byte[] data) {
         try {
             ByteArrayInputStream baInputStream = new ByteArrayInputStream(data);
             DataInputStream din = new DataInputStream(new BufferedInputStream(baInputStream));
@@ -23,10 +23,14 @@ public class EventFactory implements Protocol {
                 byte[] address = new byte[addressLength];
                 din.readFully(address);
                 int portNumber = din.readInt();
-                return new OverlayNodeSendsRegistration(address, addressLength, portNumber);
+                return new OverlayNodeSendsRegistration(senderIPAddress, address, addressLength, portNumber);
             } else if (type == REGISTRY_REPORTS_REGISTRATION_STATUS) {
                 LOG.info("Constructing new REGISTRY_REPORTS_REGISTRATION_STATUS event");
-                return new RegistryReportsRegistrationStatus();
+                int successStatus = din.readInt();
+                byte informationStringLength = din.readByte();
+                byte[] informationString = new byte[informationStringLength];
+                din.readFully(informationString);
+                return new RegistryReportsRegistrationStatus(senderIPAddress, successStatus, informationString);
             } else {
                 LOG.warn("Unknown message type received: " + type);
             }
