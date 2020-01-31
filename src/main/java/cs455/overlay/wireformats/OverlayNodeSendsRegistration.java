@@ -9,21 +9,18 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class OverlayNodeSendsRegistration implements Event, Protocol {
+public class OverlayNodeSendsRegistration extends Event implements Protocol {
 
     private Logger LOG = LogManager.getLogger(OverlayNodeSendsRegistration.class);
 
-    private byte[] address;
-    private byte addressLength;
+    private byte[] messageIPAddress;
+    private byte messageIPAddressLength;
     private int portNumber;
 
-    public OverlayNodeSendsRegistration() {
-
-    }
-
-    public OverlayNodeSendsRegistration(byte[] address, byte addressLength, int portNumber) {
-        this.address = address;
-        this.addressLength = addressLength;
+    public OverlayNodeSendsRegistration(byte[] senderIPAddress, byte[] messageIPAddress, byte messageIPAddressLength, int portNumber) {
+        this.senderIPAddress = senderIPAddress;
+        this.messageIPAddress = messageIPAddress;
+        this.messageIPAddressLength = messageIPAddressLength;
         this.portNumber = portNumber;
     }
 
@@ -40,8 +37,8 @@ public class OverlayNodeSendsRegistration implements Event, Protocol {
             DataOutputStream dout = new DataOutputStream(new BufferedOutputStream(baOutputStream));
 
             dout.writeByte(this.getType());
-            dout.writeByte(this.addressLength);
-            dout.write(this.address, 0, this.addressLength);
+            dout.writeByte(this.messageIPAddressLength);
+            dout.write(this.messageIPAddress, 0, this.messageIPAddressLength);
             dout.writeInt(this.portNumber);
 
             dout.flush();
