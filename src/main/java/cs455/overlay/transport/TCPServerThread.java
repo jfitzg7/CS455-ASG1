@@ -18,8 +18,9 @@ public class TCPServerThread implements Runnable {
         this.node = node;
     }
 
-    public TCPServerThread(ServerSocket serverSocket) {
+    public TCPServerThread(ServerSocket serverSocket, Node node) {
         this.serverSocket = serverSocket;
+        this.node = node;
     }
 
     @Override

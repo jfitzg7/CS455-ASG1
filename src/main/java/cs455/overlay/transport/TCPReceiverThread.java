@@ -46,8 +46,8 @@ public class TCPReceiverThread implements Runnable {
 
                 byte[] data = new byte[dataLength];
                 din.readFully(data, 0, dataLength);
-                LOG.info("Data: " + Arrays.toString(data));
-                Event event = node.eventFactory.factoryMethod(data);
+                LOG.debug("Data: " + Arrays.toString(data));
+                Event event = node.eventFactory.factoryMethod(socket.getInetAddress().getAddress(), data);
                 node.onEvent(event);
             } catch(SocketException se) {
                 LOG.error("SocketException: " + se.getMessage());
