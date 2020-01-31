@@ -22,6 +22,8 @@ public class RegistrationTable {
         LOG.debug("The registration table after construction: " + registrationTable);
     }
 
+    // TODO create a method for counting the number of nodes currently registered
+
     public synchronized boolean addNewEntry(LogicalNetworkAddress logicalAddress) {
         if (containsEntry(logicalAddress)) {
             LOG.warn("There is already an entry for the address: " + logicalAddress);
