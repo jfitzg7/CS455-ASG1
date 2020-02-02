@@ -1,7 +1,5 @@
 package cs455.overlay.util;
 
-import sun.rmi.runtime.Log;
-
 import java.util.Arrays;
 import java.util.Objects;
 

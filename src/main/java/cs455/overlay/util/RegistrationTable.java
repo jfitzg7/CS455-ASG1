@@ -12,7 +12,7 @@ public class RegistrationTable {
 
     private Logger LOG = LogManager.getLogger(RegistrationTable.class);
 
-    private Map<Integer, LogicalNetworkAddress> registrationTable;
+    private Map<Integer, MessagingNodeInfo> registrationTable;
 
     public RegistrationTable() {
         registrationTable = Collections.synchronizedMap(new HashMap<>());
@@ -22,11 +22,9 @@ public class RegistrationTable {
         LOG.debug("The registration table after construction: " + registrationTable);
     }
 
-    // TODO create a method for counting the number of nodes currently registered
-
-    public synchronized boolean addNewEntry(LogicalNetworkAddress logicalAddress) {
-        if (containsEntry(logicalAddress)) {
-            LOG.warn("There is already an entry for the address: " + logicalAddress);
+    public synchronized boolean addNewEntry(MessagingNodeInfo info) {
+        if (containsEntry(info)) {
+            LOG.warn("There is already an entry for the address: " + info);
             return false;
         }
         else if (isTableFull()){
@@ -35,7 +33,7 @@ public class RegistrationTable {
         }
         else {
             int id = 0;
-            while ( (registrationTable.putIfAbsent(id, logicalAddress) != null) && (id < 128) ) {
+            while ( (registrationTable.putIfAbsent(id, info) != null) && (id < 128) ) {
                 id++;
             }
             LOG.debug("Added a new entry, the registration table is now: " + registrationTable);
@@ -48,13 +46,13 @@ public class RegistrationTable {
         return !(registrationTable.containsValue(null));
     }
 
-    public synchronized boolean removeExistingEntry(int id, LogicalNetworkAddress logicalAddress) {
-        if (!containsEntry(logicalAddress)) {
-            LOG.warn("There is currently no entry in the registration table for " + logicalAddress);
+    public synchronized boolean removeExistingEntry(int id, MessagingNodeInfo info) {
+        if (!containsEntry(info)) {
+            LOG.warn("There is currently no entry in the registration table for " + info);
             return false;
         }
-        if (registrationTable.replace(id, logicalAddress, null)) {
-            LOG.debug("Removing MessagingNode with id: " + id + " and address: " + logicalAddress);
+        if (registrationTable.replace(id, info, null)) {
+            LOG.debug("Removing MessagingNode with id: " + id + " and address: " + info);
             return true;
         } else {
             LOG.warn("The address held at the specified ID does not match the address of the MessagingNode that wants to deregister");
@@ -62,18 +60,29 @@ public class RegistrationTable {
         }
     }
 
-    public synchronized boolean containsEntry(LogicalNetworkAddress logicalAddress) {
-        return registrationTable.containsValue(logicalAddress);
+    public synchronized boolean containsEntry(MessagingNodeInfo info) {
+        return registrationTable.containsValue(info);
     }
 
-    public synchronized int getID(LogicalNetworkAddress logicalNetworkAddress) {
-        for (Map.Entry<Integer, LogicalNetworkAddress> entry : registrationTable.entrySet()) {
-            if (Objects.equals(logicalNetworkAddress, entry.getValue())) {
+    public synchronized int getID(MessagingNodeInfo info) {
+        for (Map.Entry<Integer, MessagingNodeInfo> entry : registrationTable.entrySet()) {
+            if (Objects.equals(info, entry.getValue())) {
                 return entry.getKey();
             }
         }
-        LOG.warn("There is no ID assigned to the address: " + logicalNetworkAddress);
+        LOG.warn("There is no ID assigned to the address: " + info);
         return -1;
+    }
+
+    public synchronized int countEntries() {
+        int numberOfEntries = 0;
+        for (Map.Entry<Integer, MessagingNodeInfo> entry : registrationTable.entrySet()) {
+            if (Objects.equals(null, entry.getValue())); //Do nothing
+            else {
+                numberOfEntries++;
+            }
+        }
+        return numberOfEntries;
     }
 
 }
