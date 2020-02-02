@@ -16,8 +16,7 @@ public class RegistryReportsRegistrationStatus extends Event implements Protocol
     private byte[] informationString;
     private int successStatus;
 
-    public RegistryReportsRegistrationStatus(byte[] senderIPAddress, int successStatus, byte[] informationString) {
-        this.senderIPAddress = senderIPAddress;
+    public RegistryReportsRegistrationStatus(int successStatus, byte[] informationString) {
         this.successStatus = successStatus;
         this.informationString = informationString;
     }

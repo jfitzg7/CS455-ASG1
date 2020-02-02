@@ -26,7 +26,7 @@ public class Registry extends Node implements Protocol {
 
     private RegistrationTable registrationTable;
 
-    private byte[] localAddress;
+    private byte[] listeningAddress;
 
     private Registry() {
         this.eventFactory = new EventFactory();
@@ -37,7 +37,7 @@ public class Registry extends Node implements Protocol {
         try {
             Registry registry = new Registry();
             ServerSocket serverSocket = new ServerSocket(5000);
-            registry.localAddress = serverSocket.getInetAddress().getAddress();
+            registry.listeningAddress = serverSocket.getInetAddress().getAddress();
 
             TCPServerThread server = new TCPServerThread(serverSocket, registry);
             LOG.info("Starting server thread...");
@@ -48,13 +48,13 @@ public class Registry extends Node implements Protocol {
     }
 
     @Override
-    public void onEvent(Event event) {
+    public void onEvent(Socket socket, Event event) {
         if (event != null) {
             try {
                 if (event.getType() == OVERLAY_NODE_SENDS_REGISTRATION) {
                     LOG.info("Registering new messaging node...");
                     LOG.debug("bytes received from the OVERLAY_NODE_SENDS_REGISTRATION message: " + Arrays.toString(event.getBytes()));
-                    handleOverlayNodeSendsRegistration(event);
+                    handleOverlayNodeSendsRegistration(socket, event);
                 } else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");
                 }
@@ -67,7 +67,7 @@ public class Registry extends Node implements Protocol {
         }
     }
 
-    public void handleOverlayNodeSendsRegistration(Event event) {
+    public void handleOverlayNodeSendsRegistration(Socket socket, Event event) {
         byte[] data = event.getBytes();
         try {
             ByteArrayInputStream baInputStream = new ByteArrayInputStream(data);
@@ -90,25 +90,27 @@ public class Registry extends Node implements Protocol {
             LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(address, portNumber);
             int successStatus = -1;
             String informationString = "";
-            if (Arrays.equals(address, event.getSenderIPAddress())) {
+            if (Arrays.equals(address, socket.getInetAddress().getAddress())) {
                 if (registrationTable.addNewEntry(logicalAddress)) {
                     successStatus = registrationTable.getID(logicalAddress);
                     informationString = "GREAT SUCCESS!";
                 } else {
                     // TODO this needs to be more specific, i.e. make new exceptions to handle specific cases
+                    LOG.warn("handleOverlayNodeSendsRegistration: Failed to add MessagingNode to the table");
                     informationString = "Unable to add the MessagingNode to the registration table";
                 }
             } else {
+                LOG.warn("handleOverlayNodeSendsRegistration: Unable to register the MessagingNode because the IP addresses " +
+                        "don't match. address in message: " + Arrays.toString(address) + " address of socket: " +
+                        Arrays.toString(socket.getInetAddress().getAddress()));
                 informationString = "The IP address in the message does not match the actual IP address of the sender";
             }
 
             //Set up a socket to send back a REGISTRATION_REPORTS_REGISTRATION_STATUS message
-            InetAddress ipAddress = InetAddress.getByAddress(event.getSenderIPAddress());
-            Socket socket = new Socket(ipAddress, portNumber);
             TCPSender sender = new TCPSender(socket);
 
             //Construct new RegistrationReportsRegistrationStatus message
-            RegistryReportsRegistrationStatus sendRegistrationReply = new RegistryReportsRegistrationStatus(this.localAddress, successStatus, informationString.getBytes());
+            RegistryReportsRegistrationStatus sendRegistrationReply = new RegistryReportsRegistrationStatus(successStatus, informationString.getBytes());
 
             sender.sendData(sendRegistrationReply.getBytes());
 

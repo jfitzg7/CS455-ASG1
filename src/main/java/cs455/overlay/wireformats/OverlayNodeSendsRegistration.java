@@ -17,8 +17,7 @@ public class OverlayNodeSendsRegistration extends Event implements Protocol {
     private byte messageIPAddressLength;
     private int portNumber;
 
-    public OverlayNodeSendsRegistration(byte[] senderIPAddress, byte[] messageIPAddress, byte messageIPAddressLength, int portNumber) {
-        this.senderIPAddress = senderIPAddress;
+    public OverlayNodeSendsRegistration(byte[] messageIPAddress, byte messageIPAddressLength, int portNumber) {
         this.messageIPAddress = messageIPAddress;
         this.messageIPAddressLength = messageIPAddressLength;
         this.portNumber = portNumber;
