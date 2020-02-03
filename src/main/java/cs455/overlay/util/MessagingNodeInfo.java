@@ -1,10 +1,6 @@
 package cs455.overlay.util;
 
-import cs455.overlay.node.MessagingNode;
-import sun.rmi.runtime.Log;
-
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.Objects;
 
 public class MessagingNodeInfo {
@@ -16,7 +12,6 @@ public class MessagingNodeInfo {
         this.networkAddress = networkAddress;
         this.socket = socket;
     }
-
 
     public Socket getSocket() {
         return socket;

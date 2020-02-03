@@ -9,23 +9,25 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class OverlayNodeSendsRegistration extends Event implements Protocol {
+public class OverlayNodeSendsDeregistration extends Event implements Protocol{
 
-    private Logger LOG = LogManager.getLogger(OverlayNodeSendsRegistration.class);
+    private Logger LOG = LogManager.getLogger(OverlayNodeSendsDeregistration.class);
 
-    private byte[] messageIPAddress;
-    private byte messageIPAddressLength;
+    private byte IPAddressLength;
+    private byte[] IPAddress;
     private int portNumber;
+    private int assignedNodeID;
 
-    public OverlayNodeSendsRegistration(byte[] messageIPAddress, byte messageIPAddressLength, int portNumber) {
-        this.messageIPAddress = messageIPAddress;
-        this.messageIPAddressLength = messageIPAddressLength;
+    public OverlayNodeSendsDeregistration(byte IPAddressLength, byte[] IPAddress, int portNumber, int assignedNodeID) {
+        this.IPAddressLength = IPAddressLength;
+        this.IPAddress = IPAddress;
         this.portNumber = portNumber;
+        this.assignedNodeID = assignedNodeID;
     }
 
     @Override
     public byte getType() {
-        return OVERLAY_NODE_SENDS_REGISTRATION;
+        return OVERLAY_NODE_SENDS_DEREGISTRATION;
     }
 
     @Override
@@ -36,18 +38,19 @@ public class OverlayNodeSendsRegistration extends Event implements Protocol {
             DataOutputStream dout = new DataOutputStream(new BufferedOutputStream(baOutputStream));
 
             dout.writeByte(this.getType());
-            dout.writeByte(this.messageIPAddressLength);
-            dout.write(this.messageIPAddress, 0, this.messageIPAddressLength);
+            dout.writeByte(this.IPAddressLength);
+            dout.write(this.IPAddress, 0, this.IPAddressLength);
             dout.writeInt(this.portNumber);
+            dout.writeInt(this.assignedNodeID);
 
             dout.flush();
             marshalledBytes = baOutputStream.toByteArray();
-            LOG.info("marshalled bytes = " + Arrays.toString(marshalledBytes));
+            LOG.info("OVERLAY_NODE_SENDS_DEREGISTRATION bytes = " + Arrays.toString(marshalledBytes));
 
             baOutputStream.close();
             dout.close();
         } catch (IOException ioe) {
-            LOG.error("OverlayNodeSendsRegistration: An exception occurred in getBytes()", ioe);
+            LOG.error("OverlayNodeSendsDeregistration: An exception occurred in getBytes()", ioe);
         }
         return marshalledBytes;
     }

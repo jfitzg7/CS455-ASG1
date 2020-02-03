@@ -2,7 +2,8 @@ package cs455.overlay.node;
 
 import cs455.overlay.transport.TCPReceiverThread;
 import cs455.overlay.transport.TCPServerThread;
-import cs455.overlay.util.InteractiveCommandParser;
+import cs455.overlay.util.InteractiveMessagingNodeCommandParser;
+import cs455.overlay.util.RegistryReportsRegistrationStatusHandler;
 import cs455.overlay.wireformats.Event;
 import cs455.overlay.wireformats.EventFactory;
 import cs455.overlay.wireformats.OverlayNodeSendsRegistration;
@@ -23,9 +24,11 @@ public class MessagingNode extends Node implements Protocol {
     private byte[] listeningAddress;
     private byte listeningAddressLength;
     private Socket registrySocket;
+    private int nodeID;
 
     private MessagingNode() {
         this.eventFactory = new EventFactory();
+        this.nodeID = -1;
     }
 
     public static void main(String[] args) {
@@ -49,29 +52,10 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    @Override
-    public void onEvent(Socket socket, Event event) {
-        if (event != null) {
-            try {
-                if (event.getType() == REGISTRY_REPORTS_REGISTRATION_STATUS) {
-                    LOG.debug("bytes received from the REGISTRY_REPORTS_REGISTRATION_STATUS message: " + Arrays.toString(event.getBytes()));
-                } else {
-                    LOG.error("Something went wrong while reading the event type in onEvent()");
-                }
-            } catch (NullPointerException npe) {
-                LOG.error("A NullPointerException occurred while trying to get the event type");
-            }
-        }
-        else {
-            LOG.warn("The event received is null and will not be handled");
-        }
-    }
-
-    public void establishConnectionWithRegistry(String registryIPAddress, int registryPortNumber) {
+    private void establishConnectionWithRegistry(String registryIPAddress, int registryPortNumber) {
         try {
             this.registrySocket = new Socket(registryIPAddress, registryPortNumber);
             this.listeningAddress = registrySocket.getLocalAddress().getAddress();
-            //converting int to byte is potentially unsafe? might need proper handling.
             this.listeningAddressLength = (byte) this.listeningAddress.length;
             LOG.info("Messaging node is listening at address: " + Arrays.toString(this.listeningAddress)
                     + " length: " + this.listeningAddressLength);
@@ -80,7 +64,7 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    public void setUpServerSocket() {
+    private void setUpServerSocket() {
         try {
             ServerSocket serverSocket = new ServerSocket(0);
             this.listeningPort = serverSocket.getLocalPort();
@@ -94,7 +78,7 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    public void sendRegistrationMessage() {
+    private void sendRegistrationMessage() {
         try {
             OverlayNodeSendsRegistration sendsRegistrationRequest = new OverlayNodeSendsRegistration(this.listeningAddress,
                     this.listeningAddressLength, this.listeningPort);
@@ -108,10 +92,51 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    public Thread startCommandParserThread() {
+    private Thread startCommandParserThread() {
         //start command parser thread
-        Thread commandParserThread = new Thread(new InteractiveCommandParser());
+        Thread commandParserThread = new Thread(new InteractiveMessagingNodeCommandParser(this));
         commandParserThread.start();
         return commandParserThread;
+    }
+
+    @Override
+    public void onEvent(Socket socket, Event event) {
+        if (event != null) {
+            try {
+                if (event.getType() == REGISTRY_REPORTS_REGISTRATION_STATUS) {
+                    LOG.info("Received registration status report from the registry...");
+                    LOG.debug("bytes received from the REGISTRY_REPORTS_REGISTRATION_STATUS message: " + Arrays.toString(event.getBytes()));
+                    handleRegistryReportsRegistrationStatus(event);
+                } else {
+                    LOG.error("Something went wrong while reading the event type in onEvent()");
+                }
+            } catch (NullPointerException npe) {
+                LOG.error("A NullPointerException occurred while trying to get the event type");
+            }
+        }
+        else {
+            LOG.warn("The event received is null and will not be handled");
+        }
+    }
+
+    private void handleRegistryReportsRegistrationStatus(Event event) {
+        try {
+            RegistryReportsRegistrationStatusHandler handler = new RegistryReportsRegistrationStatusHandler(event);
+            int successStatus = handler.getSuccessStatus();
+            if (successStatus == -1) {
+                LOG.warn("Attempting to register failed, no ID was assigned to this messaging node");
+            }
+            else {
+                LOG.info("The registration attempt succeeded! this messaging node's ID is " + successStatus);
+                this.nodeID = successStatus;
+            }
+            LOG.info("The information string received in registration status report: " + new String(handler.getInformationString()));
+        } catch (IOException e) {
+            LOG.error("Unable to handle the REGISTRY_REPORTS_REGISTRATION_STATUS message");
+        }
+    }
+
+    public void sendDeregistrationMessage() {
+
     }
 }

@@ -2,6 +2,8 @@ package cs455.overlay.node;
 
 import cs455.overlay.transport.TCPSender;
 import cs455.overlay.util.LogicalNetworkAddress;
+import cs455.overlay.util.MessagingNodeInfo;
+import cs455.overlay.util.OverlayNodeSendsRegistrationHandler;
 import cs455.overlay.util.RegistrationTable;
 import cs455.overlay.wireformats.Event;
 import cs455.overlay.wireformats.EventFactory;
@@ -26,8 +28,6 @@ public class Registry extends Node implements Protocol {
 
     private RegistrationTable registrationTable;
 
-    private byte[] listeningAddress;
-
     private Registry() {
         this.eventFactory = new EventFactory();
         this.registrationTable = new RegistrationTable();
@@ -37,7 +37,6 @@ public class Registry extends Node implements Protocol {
         try {
             Registry registry = new Registry();
             ServerSocket serverSocket = new ServerSocket(5000);
-            registry.listeningAddress = serverSocket.getInetAddress().getAddress();
 
             TCPServerThread server = new TCPServerThread(serverSocket, registry);
             LOG.info("Starting server thread...");
@@ -55,11 +54,17 @@ public class Registry extends Node implements Protocol {
                     LOG.info("Registering new messaging node...");
                     LOG.debug("bytes received from the OVERLAY_NODE_SENDS_REGISTRATION message: " + Arrays.toString(event.getBytes()));
                     handleOverlayNodeSendsRegistration(socket, event);
-                } else {
-                    LOG.error("Something went wrong while reading the event type in onEvent()");
                 }
-            } catch (NullPointerException npe) {
-                LOG.error("A NullPointerException occurred while trying to get the event type");
+                if (event.getType() == OVERLAY_NODE_SENDS_DEREGISTRATION) {
+                    LOG.info("Deregistering messaging node...");
+                    LOG.debug("bytes received from the OVERLAY_NODE_SENDS_DEREGISTRATION message: " + Arrays.toString(event.getBytes()));
+                    handleOverlayNodeSendsDeregistration(socket, event);
+                }
+                else {
+                    LOG.warn("Received an unknown event type: " + event.getType());
+                }
+            } catch (NullPointerException e) {
+                LOG.error("A NullPointerException occurred while trying to get the event type", e);
             }
         }
         else {
@@ -67,19 +72,9 @@ public class Registry extends Node implements Protocol {
         }
     }
 
-    public void handleOverlayNodeSendsRegistration(Socket socket, Event event) {
-        byte[] data = event.getBytes();
+    private void handleOverlayNodeSendsRegistration(Socket socket, Event event) {
         try {
-            ByteArrayInputStream baInputStream = new ByteArrayInputStream(data);
-            DataInputStream din = new DataInputStream(new BufferedInputStream(baInputStream));
-            byte type = din.readByte();
-            byte addressLength = din.readByte();
-            LOG.debug("handleOverlayNodeSendsRegistration: The address length = " + addressLength);
-            byte [] address = new byte[addressLength];
-            din.readFully(address);
-            LOG.debug("handleOverlayNodeSendsRegistration: The address = " + Arrays.toString(address));
-            int portNumber = din.readInt();
-            LOG.debug("handleOverlayNodeSendsRegistration: the port number = " + portNumber);
+            OverlayNodeSendsRegistrationHandler handler = new OverlayNodeSendsRegistrationHandler(event);
 
             /* TODO NOTE:
              * I should probably add custom exceptions (mismatched or already registered)
@@ -87,13 +82,15 @@ public class Registry extends Node implements Protocol {
              * enough information to handle properly.
              */
             LOG.info("handleOverlayNodeSendsRegistration: Attempting to add new MessagingNode to the registration table...");
-            LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(address, portNumber);
+            MessagingNodeInfo messagingNodeInfo = constructNewMessagingNodeInfo(handler.getIPAddress(), handler.getPortNumber(), socket);
             int successStatus = -1;
             String informationString = "";
-            if (Arrays.equals(address, socket.getInetAddress().getAddress())) {
-                if (registrationTable.addNewEntry(logicalAddress)) {
-                    successStatus = registrationTable.getID(logicalAddress);
-                    informationString = "GREAT SUCCESS!";
+            if (Arrays.equals(handler.getIPAddress(), socket.getInetAddress().getAddress())) {
+                if (registrationTable.addNewEntry(messagingNodeInfo)) {
+                    successStatus = registrationTable.getID(messagingNodeInfo);
+                    int numberOfEntries = registrationTable.countEntries();
+                    informationString = "Registration  request  successful. The number of messaging nodes currently constituting the overlay is (" +
+                    numberOfEntries + ")";
                 } else {
                     // TODO this needs to be more specific, i.e. make new exceptions to handle specific cases
                     LOG.warn("handleOverlayNodeSendsRegistration: Failed to add MessagingNode to the table");
@@ -101,21 +98,37 @@ public class Registry extends Node implements Protocol {
                 }
             } else {
                 LOG.warn("handleOverlayNodeSendsRegistration: Unable to register the MessagingNode because the IP addresses " +
-                        "don't match. address in message: " + Arrays.toString(address) + " address of socket: " +
+                        "don't match. address in message: " + Arrays.toString(handler.getIPAddress()) + " address of socket: " +
                         Arrays.toString(socket.getInetAddress().getAddress()));
                 informationString = "The IP address in the message does not match the actual IP address of the sender";
             }
 
-            //Set up a socket to send back a REGISTRATION_REPORTS_REGISTRATION_STATUS message
-            TCPSender sender = new TCPSender(socket);
-
             //Construct new RegistrationReportsRegistrationStatus message
-            RegistryReportsRegistrationStatus sendRegistrationReply = new RegistryReportsRegistrationStatus(successStatus, informationString.getBytes());
+            RegistryReportsRegistrationStatus status = new RegistryReportsRegistrationStatus(successStatus, informationString.getBytes());
 
-            sender.sendData(sendRegistrationReply.getBytes());
+            sendRegistryReportsRegistrationStatusMessage(socket, status);
 
         } catch (IOException ioe) {
             LOG.error("IOException occurred while trying to handle an OVERLAY_NODE_SENDS_REGISTRATION message", ioe);
         }
+    }
+
+    private MessagingNodeInfo constructNewMessagingNodeInfo(byte[] IPAddress, int portNumber, Socket socket) {
+        LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(IPAddress, portNumber);
+        return new MessagingNodeInfo(logicalAddress, socket);
+    }
+
+    private void sendRegistryReportsRegistrationStatusMessage(Socket socket, RegistryReportsRegistrationStatus status) {
+        try {
+            //Set up a socket to send back a REGISTRY_REPORTS_REGISTRATION_STATUS message
+            TCPSender sender = new TCPSender(socket);
+            sender.sendData(status.getBytes());
+        } catch (IOException e) {
+            LOG.error("An exception occurred while trying to send a REGISTRY_REPORTS_REGISTRATION_STATUS message", e);
+        }
+    }
+
+    private void handleOverlayNodeSendsDeregistration(Socket socket, Event event) {
+
     }
 }

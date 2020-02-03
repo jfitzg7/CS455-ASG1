@@ -31,13 +31,28 @@ public class EventFactory implements Protocol {
                 byte[] informationString = new byte[informationStringLength];
                 din.readFully(informationString);
                 return new RegistryReportsRegistrationStatus(successStatus, informationString);
+            } else if (type == OVERLAY_NODE_SENDS_DEREGISTRATION) {
+                LOG.info("Constructing new OVERLAY_NODE_SENDS_DEREGISTRATION event");
+                byte addressLength = din.readByte();
+                byte[] address = new byte[addressLength];
+                din.readFully(address);
+                int portNumber = din.readInt();
+                int assignedNodeID = din.readInt();
+                return new OverlayNodeSendsDeregistration(addressLength, address, portNumber, assignedNodeID);
+            } else if (type == REGISTRY_REPORTS_DEREGISTRATION_STATUS){
+                LOG.info("Constructing new REGISTRY_REPORTS_DEREGISTRATION_STATUS event");
+                int successStatus = din.readInt();
+                byte informationStringLength = din.readByte();
+                byte[] informationString = new byte[informationStringLength];
+                din.readFully(informationString);
+                return new RegistryReportsDeregistrationStatus(successStatus, informationStringLength, informationString);
             } else {
                 LOG.warn("Unknown message type received: " + type);
             }
             baInputStream.close();
             din.close();
         } catch (IOException ioe) {
-            LOG.error("An IOException occurred while trying to unmarshal the data", ioe);
+            LOG.error("An exception occurred while trying to unmarshal the data", ioe);
         }
         //return null if no valid message types are detected.
         return null;

@@ -19,7 +19,6 @@ public class RegistrationTable {
         for (int i=0; i < 128; i++) {
             registrationTable.put(i, null);
         }
-        LOG.debug("The registration table after construction: " + registrationTable);
     }
 
     public synchronized boolean addNewEntry(MessagingNodeInfo info) {
