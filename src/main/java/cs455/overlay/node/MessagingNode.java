@@ -4,10 +4,7 @@ import cs455.overlay.transport.TCPReceiverThread;
 import cs455.overlay.transport.TCPServerThread;
 import cs455.overlay.util.InteractiveMessagingNodeCommandParser;
 import cs455.overlay.util.RegistryReportsRegistrationStatusHandler;
-import cs455.overlay.wireformats.Event;
-import cs455.overlay.wireformats.EventFactory;
-import cs455.overlay.wireformats.OverlayNodeSendsRegistration;
-import cs455.overlay.wireformats.Protocol;
+import cs455.overlay.wireformats.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,6 +22,7 @@ public class MessagingNode extends Node implements Protocol {
     private byte listeningAddressLength;
     private Socket registrySocket;
     private int nodeID;
+    private InteractiveMessagingNodeCommandParser commandParser;
 
     private MessagingNode() {
         this.eventFactory = new EventFactory();
@@ -94,7 +92,8 @@ public class MessagingNode extends Node implements Protocol {
 
     private Thread startCommandParserThread() {
         //start command parser thread
-        Thread commandParserThread = new Thread(new InteractiveMessagingNodeCommandParser(this));
+        this.commandParser = new InteractiveMessagingNodeCommandParser(this);
+        Thread commandParserThread = new Thread(this.commandParser);
         commandParserThread.start();
         return commandParserThread;
     }
@@ -107,7 +106,13 @@ public class MessagingNode extends Node implements Protocol {
                     LOG.info("Received registration status report from the registry...");
                     LOG.debug("bytes received from the REGISTRY_REPORTS_REGISTRATION_STATUS message: " + Arrays.toString(event.getBytes()));
                     handleRegistryReportsRegistrationStatus(event);
-                } else {
+                }
+                else if (event.getType() == REGISTRY_REPORTS_DEREGISTRATION_STATUS) {
+                    LOG.info("Received deregistration status report from the registry...");
+                    LOG.debug("bytes received from the REGISTRY_REPORTS_DEREGISTRATION_STATUS message: " + Arrays.toString(event.getBytes()));
+                    handleRegistryReportsDeregistrationStatus(event);
+                }
+                else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");
                 }
             } catch (NullPointerException npe) {
@@ -136,7 +141,19 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    public void sendDeregistrationMessage() {
+    private void handleRegistryReportsDeregistrationStatus(Event event) {
 
+    }
+
+    public void sendDeregistrationMessage() {
+        try {
+            OverlayNodeSendsDeregistration deregistrationMessage =
+                    new OverlayNodeSendsDeregistration(this.listeningAddressLength, this.listeningAddress, this.listeningPort, this.nodeID);
+
+            TCPSender sender = new TCPSender(this.registrySocket);
+            sender.sendData(deregistrationMessage.getBytes());
+        } catch(IOException e) {
+            LOG.error("Unable to send deregistration message to the registry", e);
+        }
     }
 }
