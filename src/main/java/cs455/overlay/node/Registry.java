@@ -1,14 +1,8 @@
 package cs455.overlay.node;
 
 import cs455.overlay.transport.TCPSender;
-import cs455.overlay.util.LogicalNetworkAddress;
-import cs455.overlay.util.MessagingNodeInfo;
-import cs455.overlay.util.OverlayNodeSendsRegistrationHandler;
-import cs455.overlay.util.RegistrationTable;
-import cs455.overlay.wireformats.Event;
-import cs455.overlay.wireformats.EventFactory;
-import cs455.overlay.wireformats.Protocol;
-import cs455.overlay.wireformats.RegistryReportsRegistrationStatus;
+import cs455.overlay.util.*;
+import cs455.overlay.wireformats.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import cs455.overlay.transport.TCPServerThread;
@@ -129,6 +123,41 @@ public class Registry extends Node implements Protocol {
     }
 
     private void handleOverlayNodeSendsDeregistration(Socket socket, Event event) {
+        try {
+            OverlayNodeSendsDeregistrationHandler handler = new OverlayNodeSendsDeregistrationHandler(event);
+            LogicalNetworkAddress networkAddress = new LogicalNetworkAddress(handler.getIPAddress(), handler.getPortNumber());
+            MessagingNodeInfo recvdNodeInfo = new MessagingNodeInfo(networkAddress, socket);
+
+            int successStatus = -1;
+            String informationString = "";
+            if (this.registrationTable.containsEntry(recvdNodeInfo)) {
+                MessagingNodeInfo storedNodeInfo = this.registrationTable.getEntry(handler.getAssignedNodeID());
+                if (storedNodeInfo.getNetworkAddress().equals(recvdNodeInfo.getNetworkAddress())) {
+                    //deregister the node and return a success status
+                    this.registrationTable.removeExistingEntry(handler.getAssignedNodeID(), recvdNodeInfo);
+                    successStatus = handler.getAssignedNodeID();
+                    informationString = "Deregistration request successful. The number of messaging nodes currently constituting the overlay is (" +
+                            this.registrationTable.countEntries() + ")";
+                } else {
+                    //return error message because the network addresses don't match
+                    informationString = "Deregistration request unsuccessful. The messaging node information provided does not match";
+                }
+            } else {
+                //return an error message because there is no entry for the address in the message
+                informationString = "Deregistration request unsuccessful. The messaging node is not currently registered";
+            }
+
+            RegistryReportsDeregistrationStatus deregistrationStatus = new
+                    RegistryReportsDeregistrationStatus(successStatus, informationString.getBytes());
+
+            TCPSender sender = new TCPSender(socket);
+
+            sender.sendData(deregistrationStatus.getBytes());
+
+
+        } catch(IOException e) {
+            LOG.error("Unable to handle an OVERLAY_NODE_SENDS_DEREGISTRATION message", e);
+        }
 
     }
 }

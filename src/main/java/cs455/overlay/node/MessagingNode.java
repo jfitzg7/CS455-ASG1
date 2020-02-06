@@ -3,6 +3,7 @@ package cs455.overlay.node;
 import cs455.overlay.transport.TCPReceiverThread;
 import cs455.overlay.transport.TCPServerThread;
 import cs455.overlay.util.InteractiveMessagingNodeCommandParser;
+import cs455.overlay.util.RegistryReportsDeregistrationStatusHandler;
 import cs455.overlay.util.RegistryReportsRegistrationStatusHandler;
 import cs455.overlay.wireformats.*;
 import org.apache.logging.log4j.LogManager;
@@ -142,6 +143,15 @@ public class MessagingNode extends Node implements Protocol {
     }
 
     private void handleRegistryReportsDeregistrationStatus(Event event) {
+        try {
+            RegistryReportsDeregistrationStatusHandler handler = new RegistryReportsDeregistrationStatusHandler(event);
+            LOG.debug("Success status = " + handler.getSuccessStatus());
+            LOG.debug("Deregistration information string = " + new String(handler.getInformationString()));
+            System.exit(0);
+        } catch(IOException e) {
+            LOG.error("Unable to handle REGISTRY_REPORTS_DEREGISTRATION_STATUS message", e);
+            System.exit(-1);
+        }
 
     }
 

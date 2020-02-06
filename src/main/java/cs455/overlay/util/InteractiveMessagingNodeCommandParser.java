@@ -16,6 +16,7 @@ public class InteractiveMessagingNodeCommandParser implements Runnable {
     @Override
     public void run() {
         Scanner sc = new Scanner(System.in);
+        System.out.print("Enter a command: ");
         while(sc.hasNextLine()) {
             String command = sc.nextLine();
             if (command.equals("print-counters-and-diagnostics")) {
@@ -23,13 +24,11 @@ public class InteractiveMessagingNodeCommandParser implements Runnable {
             }
             else if (command.equals("exit-overlay")) {
                 messagingNode.sendDeregistrationMessage();
-                //wait for registry to respond back
-                while(!exit);
-                break;
             }
             else {
                 System.out.println("Unknown command received: " + command);
             }
+            System.out.print("Enter a command: ");
         }
     }
 

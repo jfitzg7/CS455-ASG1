@@ -45,7 +45,7 @@ public class EventFactory implements Protocol {
                 byte informationStringLength = din.readByte();
                 byte[] informationString = new byte[informationStringLength];
                 din.readFully(informationString);
-                return new RegistryReportsDeregistrationStatus(successStatus, informationStringLength, informationString);
+                return new RegistryReportsDeregistrationStatus(successStatus, informationString);
             } else {
                 LOG.warn("Unknown message type received: " + type);
             }

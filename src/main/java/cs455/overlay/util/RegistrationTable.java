@@ -84,4 +84,8 @@ public class RegistrationTable {
         return numberOfEntries;
     }
 
+    public synchronized MessagingNodeInfo getEntry(int key) {
+        return registrationTable.get(key);
+    }
+
 }
