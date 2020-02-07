@@ -3,10 +3,7 @@ package cs455.overlay.util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class RegistrationTable {
 
@@ -76,8 +73,7 @@ public class RegistrationTable {
     public synchronized int countEntries() {
         int numberOfEntries = 0;
         for (Map.Entry<Integer, MessagingNodeInfo> entry : registrationTable.entrySet()) {
-            if (Objects.equals(null, entry.getValue())); //Do nothing
-            else {
+            if (!Objects.equals(null, entry.getValue())) {
                 numberOfEntries++;
             }
         }
@@ -88,4 +84,15 @@ public class RegistrationTable {
         return registrationTable.get(key);
     }
 
+    public synchronized int[] getNodeIDList() {
+        int[] nodeIDList = new int[countEntries()];
+        int listCounter = 0;
+        for(int i=0; i < 128; i++) {
+            if(!Objects.equals(null, registrationTable.get(i))) {
+                nodeIDList[listCounter] = i;
+                listCounter++;
+            }
+        }
+        return nodeIDList;
+    }
 }

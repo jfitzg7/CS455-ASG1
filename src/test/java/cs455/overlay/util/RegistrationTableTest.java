@@ -43,7 +43,12 @@ class RegistrationTableTest {
 
     @Test
     public void fullTableTest() {
-        // TODO
+        for (int i=0; i < 128; i++) {
+            LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(new byte[]{10, 10, 10, 10}, i + 5000);
+            registrationTable.addNewEntry(new MessagingNodeInfo(logicalAddress, new Socket()));
+        }
+        LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(new byte[]{10, 10, 10, 10}, 6000);
+        assertFalse(registrationTable.addNewEntry(new MessagingNodeInfo(logicalAddress, new Socket())));
     }
 
     @Test
@@ -92,6 +97,25 @@ class RegistrationTableTest {
         registrationTable.addNewEntry(messagingNodeInfo);
         int id = registrationTable.getID(messagingNodeInfo);
         assertFalse(registrationTable.removeExistingEntry(id, mismatchedInfo));
+    }
+
+    @Test
+    public void getNodeIDListTest() {
+        for (int i=0; i < 128; i++) {
+            LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(new byte[]{10, 10, 10, 10}, i + 5000);
+            registrationTable.addNewEntry(new MessagingNodeInfo(logicalAddress, new Socket()));
+        }
+        for (int i=0; i < 128; i += 2) {
+            LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(new byte[]{10, 10, 10, 10}, i + 5000);
+            registrationTable.removeExistingEntry(i, new MessagingNodeInfo(logicalAddress, new Socket()));
+        }
+        int[] expectedNodeIDList = new int[64];
+        int listCounter = 0;
+        for (int i=1; i < 128; i += 2) {
+            expectedNodeIDList[listCounter] = i;
+            listCounter++;
+        }
+        assertArrayEquals(expectedNodeIDList, registrationTable.getNodeIDList());
     }
 
 }

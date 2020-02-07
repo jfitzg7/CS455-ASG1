@@ -160,4 +160,11 @@ public class Registry extends Node implements Protocol {
         }
 
     }
+
+    public void setupOverlay(int routingTableSize) {
+        int[] nodeIDList = registrationTable.getNodeIDList();
+        for(int i=0; i < nodeIDList.length; i++) {
+            
+        }
+    }
 }
