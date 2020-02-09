@@ -51,18 +51,6 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    private void establishConnectionWithRegistry(String registryIPAddress, int registryPortNumber) {
-        try {
-            this.registrySocket = new Socket(registryIPAddress, registryPortNumber);
-            this.listeningAddress = registrySocket.getLocalAddress().getAddress();
-            this.listeningAddressLength = (byte) this.listeningAddress.length;
-            LOG.info("Messaging node is listening at address: " + Arrays.toString(this.listeningAddress)
-                    + " length: " + this.listeningAddressLength);
-        } catch (IOException e) {
-            LOG.error("An exception occurred while trying to establish a connection with the registry", e);
-        }
-    }
-
     private void setUpServerSocket() {
         try {
             ServerSocket serverSocket = new ServerSocket(0);
@@ -74,6 +62,18 @@ public class MessagingNode extends Node implements Protocol {
             (new Thread(new TCPServerThread(serverSocket, this))).start();
         } catch (IOException e) {
             LOG.error("An exception occurred while trying to set up the server socket", e);
+        }
+    }
+
+    private void establishConnectionWithRegistry(String registryIPAddress, int registryPortNumber) {
+        try {
+            this.registrySocket = new Socket(registryIPAddress, registryPortNumber, null, this.listeningPort);
+            this.listeningAddress = registrySocket.getLocalAddress().getAddress();
+            this.listeningAddressLength = (byte) this.listeningAddress.length;
+            LOG.info("Messaging node is listening at address: " + Arrays.toString(this.listeningAddress)
+                    + " length: " + this.listeningAddressLength);
+        } catch (IOException e) {
+            LOG.error("An exception occurred while trying to establish a connection with the registry", e);
         }
     }
 

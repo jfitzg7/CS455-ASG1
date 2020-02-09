@@ -28,18 +28,45 @@ public class RegistrationTable {
             return false;
         }
         else {
-            int id = 0;
-            while ( (registrationTable.putIfAbsent(id, info) != null) && (id < 128) ) {
-                id++;
+            int[] availableIDList = getAvailableIDList();
+            Random rand = new Random();
+            int index = rand.nextInt(availableIDList.length);
+            int id = availableIDList[index];
+            if (registrationTable.putIfAbsent(id, info) == null) {
+                LOG.debug("Added a new entry, the registration table is now: " + registrationTable);
+                return true;
+            } else {
+                LOG.debug("Unable to add a new entry, the ID chosen is already taken");
+                return false;
             }
-            LOG.debug("Added a new entry, the registration table is now: " + registrationTable);
-            return true;
         }
     }
 
     private boolean isTableFull() {
         // If there is a null value in the table, then that means there is an open ID slot
         return !(registrationTable.containsValue(null));
+    }
+
+    private int[] getAvailableIDList() {
+        int[] availableNodeIDList = new int[countEmptyEntries()];
+        int listCounter = 0;
+        for(int i=0; i < 128; i++) {
+            if(Objects.equals(null, registrationTable.get(i))) {
+                availableNodeIDList[listCounter] = i;
+                listCounter++;
+            }
+        }
+        return availableNodeIDList;
+    }
+
+    private int countEmptyEntries() {
+        int numberOfEmptyEntries = 0;
+        for (Map.Entry<Integer, MessagingNodeInfo> entry : registrationTable.entrySet()) {
+            if (Objects.equals(null, entry.getValue())) {
+                numberOfEmptyEntries++;
+            }
+        }
+        return numberOfEmptyEntries;
     }
 
     public synchronized boolean removeExistingEntry(int id, MessagingNodeInfo info) {

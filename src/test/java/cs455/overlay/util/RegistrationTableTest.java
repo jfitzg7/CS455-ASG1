@@ -101,21 +101,12 @@ class RegistrationTableTest {
 
     @Test
     public void getNodeIDListTest() {
-        for (int i=0; i < 128; i++) {
+        for (int i=0; i < 5; i++) {
             LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(new byte[]{10, 10, 10, 10}, i + 5000);
             registrationTable.addNewEntry(new MessagingNodeInfo(logicalAddress, new Socket()));
         }
-        for (int i=0; i < 128; i += 2) {
-            LogicalNetworkAddress logicalAddress = new LogicalNetworkAddress(new byte[]{10, 10, 10, 10}, i + 5000);
-            registrationTable.removeExistingEntry(i, new MessagingNodeInfo(logicalAddress, new Socket()));
-        }
-        int[] expectedNodeIDList = new int[64];
-        int listCounter = 0;
-        for (int i=1; i < 128; i += 2) {
-            expectedNodeIDList[listCounter] = i;
-            listCounter++;
-        }
-        assertArrayEquals(expectedNodeIDList, registrationTable.getNodeIDList());
+
+        assertEquals(5, registrationTable.getNodeIDList().length);
     }
 
 }
