@@ -1,19 +1,15 @@
 package cs455.overlay.node;
 
-import cs455.overlay.transport.TCPReceiverThread;
-import cs455.overlay.transport.TCPServerThread;
-import cs455.overlay.util.InteractiveMessagingNodeCommandParser;
-import cs455.overlay.util.RegistryReportsDeregistrationStatusHandler;
-import cs455.overlay.util.RegistryReportsRegistrationStatusHandler;
+import cs455.overlay.transport.*;
+import cs455.overlay.util.*;
 import cs455.overlay.wireformats.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.Arrays;
-
-import cs455.overlay.transport.TCPSender;
 
 public class MessagingNode extends Node implements Protocol {
 
@@ -25,9 +21,14 @@ public class MessagingNode extends Node implements Protocol {
     private int nodeID;
     private InteractiveMessagingNodeCommandParser commandParser;
 
+    private RoutingTable routingTable;
+    private int[] nodeIDList;
+    private TCPConnectionCache connectionCache;
+
     private MessagingNode() {
         this.eventFactory = new EventFactory();
         this.nodeID = -1;
+        this.connectionCache = new TCPConnectionCache();
     }
 
     public static void main(String[] args) {
@@ -42,8 +43,7 @@ public class MessagingNode extends Node implements Protocol {
 
                 //start command parser thread
                 Thread commandParserThread = messagingNode.startCommandParserThread();
-                commandParserThread.join();
-            } catch (InterruptedException e) {
+            } catch (NumberFormatException e) {
                 LOG.error("Exception occurred in MessageNode main method", e);
             }
         } else {
@@ -116,6 +116,7 @@ public class MessagingNode extends Node implements Protocol {
                 else if (event.getType() == REGISTRY_SENDS_NODE_MANIFEST) {
                     LOG.info("Received node manifest message from the registry...");
                     LOG.debug("bytes received from the REGISTRY_SENDS_NODE_MANIFEST message: " + Arrays.toString(event.getBytes()));
+                    handleRegistrySendsNodeManifest(event);
                 }
                 else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");
@@ -169,5 +170,39 @@ public class MessagingNode extends Node implements Protocol {
         } catch(IOException e) {
             LOG.error("Unable to send deregistration message to the registry", e);
         }
+    }
+
+    private void handleRegistrySendsNodeManifest(Event event) {
+        try {
+            RegistrySendsNodeManifestHandler handler = new RegistrySendsNodeManifestHandler(event);
+            this.routingTable = handler.getRoutingTable();
+            int successStatus = this.nodeID;
+            String informationString = "Unable to establish connection to node IDs:";
+            for(int nodeID : this.routingTable.getNodeIDList()) {
+                try {
+                    LOG.info("Trying to establish a connection to messaging node " + nodeID);
+                    RoutingEntry entry = this.routingTable.getRoutingEntryByNodeID(nodeID);
+                    InetAddress IPAddress = InetAddress.getByAddress(entry.getIPAddress());
+                    Socket socket = new Socket(IPAddress, entry.getPortNumber());
+                    TCPConnection connection = new TCPConnection(socket, this);
+                    this.connectionCache.cacheTCPConnection(nodeID, connection);
+                } catch(IOException e) {
+                    LOG.error("Unable to establish connection to node " + nodeID, e);
+                    successStatus = -1;
+                    informationString += " " + nodeID;
+                }
+            }
+            if (successStatus != -1) {
+                informationString = "Successfully established a connection to all nodes in the routing table!";
+            }
+
+            NodeReportsOverlaySetupStatus setupStatus = new NodeReportsOverlaySetupStatus(successStatus, informationString.getBytes());
+
+            TCPSender sender = new TCPSender(this.registrySocket);
+            sender.sendData(setupStatus.getBytes());
+        } catch(IOException e) {
+            LOG.error("Unable to handle a REGISTRY_SENDS_NODE_MANIFEST message", e);
+        }
+
     }
 }

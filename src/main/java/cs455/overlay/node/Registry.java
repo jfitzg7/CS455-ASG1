@@ -81,6 +81,10 @@ public class Registry extends Node implements Protocol {
                     LOG.debug("bytes received from the OVERLAY_NODE_SENDS_DEREGISTRATION message: " + Arrays.toString(event.getBytes()));
                     handleOverlayNodeSendsDeregistration(socket, event);
                 }
+                else if (event.getType() == NODE_REPORTS_OVERLAY_SETUP_STATUS) {
+                    LOG.info("Received an overlay setup status from one of the messaging nodes...");
+                    LOG.debug("bytes received from NODE_REPORTS_OVERLAY_SETUP_STATUS message: " + Arrays.toString(event.getBytes()));
+                }
                 else {
                     LOG.warn("Received an unknown event type: " + event.getType());
                 }

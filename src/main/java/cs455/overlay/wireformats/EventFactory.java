@@ -68,8 +68,14 @@ public class EventFactory implements Protocol {
                     nodeIDList[i] = din.readInt();
                 }
                 return new RegistrySendsNodeManifest(routingTableSize, routingTable, nodeIDList);
-            }
-            else {
+            } else if (type == NODE_REPORTS_OVERLAY_SETUP_STATUS) {
+                LOG.info("Constructing new NODE_REPORTS_OVERLAY_SETUP_STATUS event");
+                int successStatus = din.readInt();
+                byte informationStringLength = din.readByte();
+                byte[] informationString = new byte[informationStringLength];
+                din.readFully(informationString);
+                return new NodeReportsOverlaySetupStatus(successStatus, informationString);
+            } else {
                 LOG.warn("Unknown message type received: " + type);
             }
             baInputStream.close();
