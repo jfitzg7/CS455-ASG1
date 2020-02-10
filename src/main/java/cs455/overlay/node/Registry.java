@@ -10,8 +10,10 @@ import cs455.overlay.transport.TCPServerThread;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
+import java.util.StringTokenizer;
 
 public class Registry extends Node implements Protocol {
 
@@ -32,11 +34,32 @@ public class Registry extends Node implements Protocol {
             TCPServerThread server = new TCPServerThread(serverSocket, registry);
             LOG.info("Starting server thread...");
             (new Thread(server)).start();
+
             Scanner sc = new Scanner(System.in);
             while(sc.hasNextLine()) {
                 String command = sc.nextLine();
-                if(command.equals("")) {
-
+                StringTokenizer st = new StringTokenizer(command);
+                ArrayList<String> tokenList = new ArrayList<>();
+                while(st.hasMoreTokens()) {
+                    tokenList.add(st.nextToken());
+                }
+                if (tokenList.size() > 0) {
+                    if (tokenList.get(0).equals("setup-overlay")) {
+                        if (tokenList.size() == 2) {
+                            try {
+                                int routingTableSize = Integer.parseInt(tokenList.get(1));
+                                registry.setupOverlay(routingTableSize);
+                            } catch(NumberFormatException e) {
+                                System.out.println("Unable to parse the number-of-routing-table-entries, it must be an integer value");
+                            }
+                        }
+                        else {
+                            System.out.println("Incorrect number of arguments provided for setup-overlay command");
+                        }
+                    }
+                    else {
+                        System.out.println("Unknown argument provided");
+                    }
                 }
             }
         } catch (IOException ioe) {
@@ -53,7 +76,7 @@ public class Registry extends Node implements Protocol {
                     LOG.debug("bytes received from the OVERLAY_NODE_SENDS_REGISTRATION message: " + Arrays.toString(event.getBytes()));
                     handleOverlayNodeSendsRegistration(socket, event);
                 }
-                if (event.getType() == OVERLAY_NODE_SENDS_DEREGISTRATION) {
+                else if (event.getType() == OVERLAY_NODE_SENDS_DEREGISTRATION) {
                     LOG.info("Deregistering messaging node...");
                     LOG.debug("bytes received from the OVERLAY_NODE_SENDS_DEREGISTRATION message: " + Arrays.toString(event.getBytes()));
                     handleOverlayNodeSendsDeregistration(socket, event);
@@ -165,10 +188,10 @@ public class Registry extends Node implements Protocol {
 
     }
 
-    public void setupOverlay(byte routingTableSize) {
+    public void setupOverlay(int routingTableSize) {
         int[] nodeIDList = registrationTable.getNodeIDList();
         Arrays.sort(nodeIDList);
-        LOG.debug("The sorted nodeIDList = " + nodeIDList);
+        LOG.debug("The sorted nodeIDList = " + Arrays.toString(nodeIDList));
         for(int i=0; i < nodeIDList.length; i++) {
             LOG.debug("Setting up routing table for node " + nodeIDList[i]);
             RoutingTable routingTable = new RoutingTable();

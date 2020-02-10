@@ -67,7 +67,7 @@ public class MessagingNode extends Node implements Protocol {
 
     private void establishConnectionWithRegistry(String registryIPAddress, int registryPortNumber) {
         try {
-            this.registrySocket = new Socket(registryIPAddress, registryPortNumber, null, this.listeningPort);
+            this.registrySocket = new Socket(registryIPAddress, registryPortNumber);
             this.listeningAddress = registrySocket.getLocalAddress().getAddress();
             this.listeningAddressLength = (byte) this.listeningAddress.length;
             LOG.info("Messaging node is listening at address: " + Arrays.toString(this.listeningAddress)
@@ -112,6 +112,10 @@ public class MessagingNode extends Node implements Protocol {
                     LOG.info("Received deregistration status report from the registry...");
                     LOG.debug("bytes received from the REGISTRY_REPORTS_DEREGISTRATION_STATUS message: " + Arrays.toString(event.getBytes()));
                     handleRegistryReportsDeregistrationStatus(event);
+                }
+                else if (event.getType() == REGISTRY_SENDS_NODE_MANIFEST) {
+                    LOG.info("Received node manifest message from the registry...");
+                    LOG.debug("bytes received from the REGISTRY_SENDS_NODE_MANIFEST message: " + Arrays.toString(event.getBytes()));
                 }
                 else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");

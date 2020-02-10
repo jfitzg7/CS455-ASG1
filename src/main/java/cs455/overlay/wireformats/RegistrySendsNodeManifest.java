@@ -15,11 +15,11 @@ public class RegistrySendsNodeManifest extends Event implements Protocol {
 
     private Logger LOG = LogManager.getLogger(RegistrySendsNodeManifest.class);
 
-    private byte routingTableSize;
+    private int routingTableSize;
     private RoutingTable routingTable;
     private int[] nodeIDList;
 
-    public RegistrySendsNodeManifest(byte routingTableSize, RoutingTable routingTable, int[] nodeIDList) {
+    public RegistrySendsNodeManifest(int routingTableSize, RoutingTable routingTable, int[] nodeIDList) {
         this.routingTableSize = routingTableSize;
         this.routingTable = routingTable;
         this.nodeIDList = nodeIDList;
