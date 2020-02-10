@@ -5,11 +5,13 @@ public class RoutingEntry {
     private final byte[] IPAddress;
     private final int portNumber;
     private final int nodeID;
+    private final int hopsAway;
 
-    public RoutingEntry(byte[] IPAddress, int portNumber, int nodeID) {
+    public RoutingEntry(byte[] IPAddress, int portNumber, int nodeID, int hopsAway) {
         this.IPAddress = IPAddress;
         this.portNumber = portNumber;
         this.nodeID = nodeID;
+        this.hopsAway = hopsAway;
     }
 
     public byte[] getIPAddress() {
@@ -22,5 +24,9 @@ public class RoutingEntry {
 
     public int getNodeID() {
         return nodeID;
+    }
+
+    public int getHopsAway() {
+        return hopsAway;
     }
 }

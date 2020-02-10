@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class Registry extends Node implements Protocol {
 
@@ -31,6 +32,13 @@ public class Registry extends Node implements Protocol {
             TCPServerThread server = new TCPServerThread(serverSocket, registry);
             LOG.info("Starting server thread...");
             (new Thread(server)).start();
+            Scanner sc = new Scanner(System.in);
+            while(sc.hasNextLine()) {
+                String command = sc.nextLine();
+                if(command.equals("")) {
+
+                }
+            }
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
@@ -157,20 +165,33 @@ public class Registry extends Node implements Protocol {
 
     }
 
-    public void setupOverlay(int routingTableSize) {
+    public void setupOverlay(byte routingTableSize) {
         int[] nodeIDList = registrationTable.getNodeIDList();
         Arrays.sort(nodeIDList);
+        LOG.debug("The sorted nodeIDList = " + nodeIDList);
         for(int i=0; i < nodeIDList.length; i++) {
+            LOG.debug("Setting up routing table for node " + nodeIDList[i]);
             RoutingTable routingTable = new RoutingTable();
             for (int j=0; j < routingTableSize; j++) {
-                int nextHopIndex = (int) Math.pow(2, j);
-                int nextHopID = nodeIDList[nextHopIndex];
+                int hopsAway = (int) Math.pow(2, j);
+                int nextHopID = nodeIDList[(i + hopsAway) % nodeIDList.length];
+                LOG.debug("Node ID of of node " + hopsAway + " hop away = " + nextHopID);
                 MessagingNodeInfo info = registrationTable.getEntry(nextHopID);
                 LogicalNetworkAddress networkAddress = info.getNetworkAddress();
                 byte [] IPAddress = networkAddress.getIPAddress();
+                LOG.debug("IP address of node " + hopsAway + " hop away = " + Arrays.toString(IPAddress));
                 int portNumber = networkAddress.getPortNumber();
-                RoutingEntry entry = new RoutingEntry(IPAddress, portNumber, nextHopID);
+                LOG.debug("port Number of node " + hopsAway + " hop away = " + portNumber);
+                RoutingEntry entry = new RoutingEntry(IPAddress, portNumber, nextHopID, hopsAway);
                 routingTable.addRoutingEntry(entry);
+            }
+            RegistrySendsNodeManifest nodeManifest = new RegistrySendsNodeManifest(routingTableSize, routingTable, nodeIDList);
+            Socket messagingNodeSocket = registrationTable.getEntry(nodeIDList[i]).getSocket();
+            try {
+                TCPSender sender = new TCPSender(messagingNodeSocket);
+                sender.sendData(nodeManifest.getBytes());
+            } catch (IOException e) {
+                LOG.error("Unable to send REGISTRY_SENDS_NODE_MANIFEST to messaging node " + nodeIDList[i], e);
             }
         }
     }
