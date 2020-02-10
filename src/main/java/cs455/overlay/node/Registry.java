@@ -7,11 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import cs455.overlay.transport.TCPServerThread;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
@@ -163,8 +159,19 @@ public class Registry extends Node implements Protocol {
 
     public void setupOverlay(int routingTableSize) {
         int[] nodeIDList = registrationTable.getNodeIDList();
+        Arrays.sort(nodeIDList);
         for(int i=0; i < nodeIDList.length; i++) {
-            
+            RoutingTable routingTable = new RoutingTable();
+            for (int j=0; j < routingTableSize; j++) {
+                int nextHopIndex = (int) Math.pow(2, j);
+                int nextHopID = nodeIDList[nextHopIndex];
+                MessagingNodeInfo info = registrationTable.getEntry(nextHopID);
+                LogicalNetworkAddress networkAddress = info.getNetworkAddress();
+                byte [] IPAddress = networkAddress.getIPAddress();
+                int portNumber = networkAddress.getPortNumber();
+                RoutingEntry entry = new RoutingEntry(IPAddress, portNumber, nextHopID);
+                routingTable.addRoutingEntry(entry);
+            }
         }
     }
 }
