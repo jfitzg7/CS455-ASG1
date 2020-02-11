@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
@@ -29,6 +28,7 @@ public class MessagingNode extends Node implements Protocol {
 
     private int sendTracker;
     private int receiveTracker;
+    private int relayTracker;
     private long sendSummation;
     private long receiveSummation;
 
@@ -233,12 +233,27 @@ public class MessagingNode extends Node implements Protocol {
             RegistryRequestsTaskInitiateHandler handler = new RegistryRequestsTaskInitiateHandler(event);
             Random rand = new Random();
             int numberOfMessages = handler.getNumberOfMessages();
+            int[] nodeIDListWithoutCurrentID = constructNodeIDListWithoutCurrentNodeID();
             for(int i=0; i < numberOfMessages; i++) {
-                int randomIndex = rand.nextInt(this.overlayNodeIDList.length);
-                int randomNodeID = this.overlayNodeIDList[randomIndex];
+                int randomIndex = rand.nextInt(nodeIDListWithoutCurrentID.length);
+                int randomNodeID = nodeIDListWithoutCurrentID[randomIndex];
+                LOG.debug("Randomly chosen destination node ID = " + randomNodeID);
                 int payload = (int) ThreadLocalRandom.current().nextLong(Integer.MIN_VALUE, (long) Integer.MAX_VALUE + 1);
+                LOG.debug("Randomly chosen payload = " + payload);
                 int[] disseminationTrace = new int[0];
                 OverlayNodeSendsData data = new OverlayNodeSendsData(randomNodeID, this.nodeID, payload, disseminationTrace);
+                int nextNodeID = selectNodeToSendDataTo(randomNodeID);
+                LOG.info("Attempting to send data to node " + nextNodeID);
+                TCPConnection connection = this.connectionCache.getTCPConnection(nextNodeID);
+                try {
+                    connection.sendData(data.getBytes());
+                    this.sendTracker++;
+                    this.sendSummation += payload;
+                    LOG.debug("sendTracker = " + this.sendTracker + " sendSummation = " + this.sendSummation);
+                } catch (IOException e) {
+                    LOG.error("Unable to send OVERLAY_NODE_SENDS_DATA message to node " + nextNodeID, e);
+                }
+
             }
 
         } catch(IOException e) {
@@ -246,21 +261,107 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    private void handleOverlayNodeSendsData(Event event) {
+    private int[] constructNodeIDListWithoutCurrentNodeID() {
+        int[] newNodeIDList = new int[this.overlayNodeIDList.length - 1];
+        int newNodeIDListCounter = 0;
+        for (int i=0; i < this.overlayNodeIDList.length; i++) {
+            if (this.overlayNodeIDList[i] != this.nodeID) {
+                newNodeIDList[newNodeIDListCounter] = this.overlayNodeIDList[i];
+                newNodeIDListCounter++;
+            }
+        }
+        return newNodeIDList;
+    }
 
+    private void handleOverlayNodeSendsData(Event event) {
+        try {
+            OverlayNodeSendsDataHandler handler = new OverlayNodeSendsDataHandler(event);
+            if (handler.getDestinationID() == this.nodeID) {
+                LOG.info("Received an OVERLAY_NODE_SENDS_DATA message destined for this node!");
+                incrementReceiveTracker();
+                addToReceiveSummation(handler.getPayload());
+            }
+            else {
+                int[] currentDisseminationTrace = handler.getDisseminationTrace();
+                int[] newDisseminationTrace = new int[currentDisseminationTrace.length + 1];
+                //copy current dissemination trace to the new one
+                for (int i=0; i < currentDisseminationTrace.length; i++) {
+                    newDisseminationTrace[i] = currentDisseminationTrace[i];
+                }
+                //add this messaging nodes ID to the dissemination trace
+                newDisseminationTrace[newDisseminationTrace.length - 1] = this.nodeID;
+                OverlayNodeSendsData data = new OverlayNodeSendsData(handler.getDestinationID(), handler.getSourceID(),
+                        handler.getPayload(), newDisseminationTrace);
+                int nextNodeID = selectNodeToSendDataTo(handler.getDestinationID());
+                LOG.info("Attempting to relay data to node " + nextNodeID);
+                TCPConnection connection = this.connectionCache.getTCPConnection(nextNodeID);
+                try {
+                    connection.sendData(data.getBytes());
+                    incrementRelayTracker();
+                } catch (IOException e) {
+                    LOG.error("Unable to relay OVERLAY_NODE_SENDS_DATA message to node " + nextNodeID);
+                }
+            }
+        } catch (IOException e) {
+            LOG.error("Unable to handle OVERLAY_NODE_SENDS_DATA message", e);
+        }
+
+    }
+
+    private synchronized void incrementReceiveTracker() {
+        this.receiveTracker++;
+        LOG.debug("Receive tracker = " + this.receiveTracker);
+    }
+
+    private synchronized void addToReceiveSummation(int payload) {
+        this.receiveSummation += payload;
+        LOG.debug("Receive summation = " + this.receiveSummation);
+    }
+
+    private synchronized void incrementRelayTracker() {
+        this.relayTracker++;
+        LOG.debug("Relay tracker = " + this.relayTracker);
     }
 
     private int selectNodeToSendDataTo(int destinationID) {
         int[] routingTableNodeIDs = this.routingTable.getNodeIDListSortedByHopsAway();
         int bestChoiceID = -1;
+        int minimumHopsAway = Integer.MAX_VALUE;
         for (int i=0; i < routingTableNodeIDs.length; i++) {
-            if(routingTableNodeIDs[i] == destinationID) {
-                return routingTableNodeIDs[i];
-            }
-            else {
-
+            int hopsAway = findHopsAwayFromNodeToDestination(routingTableNodeIDs[i], destinationID);
+            if(hopsAway < minimumHopsAway) {
+                minimumHopsAway = hopsAway;
+                bestChoiceID = routingTableNodeIDs[i];
             }
         }
         return bestChoiceID;
+    }
+
+    private int findHopsAwayFromNodeToDestination(int startingID, int destinationID) {
+        //TODO throw IDNotFoundException?
+
+        int startingIndex = -1;
+        int destinationIndex = -1;
+
+        //find starting index
+        for (int i=0; i < this.overlayNodeIDList.length; i++) {
+            if (this.overlayNodeIDList[i] == startingID) {
+                startingIndex = i;
+            }
+        }
+
+        //find destination index
+        for (int i=0; i < this.overlayNodeIDList.length; i++) {
+            if (this.overlayNodeIDList[i] == destinationID) {
+                destinationIndex = i;
+            }
+        }
+
+        if (startingIndex > destinationIndex) {
+            return (this.overlayNodeIDList.length - startingIndex) + destinationIndex;
+        }
+        else {
+            return destinationIndex - startingIndex;
+        }
     }
 }

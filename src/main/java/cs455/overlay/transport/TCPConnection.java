@@ -34,4 +34,8 @@ public class TCPConnection {
     public int getLocalPort() {
         return this.socket.getLocalPort();
     }
+
+    public void sendData(byte[] dataToSend) throws IOException {
+        this.sender.sendData(dataToSend);
+    }
 }

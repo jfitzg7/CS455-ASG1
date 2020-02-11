@@ -26,14 +26,16 @@ public class EventFactory implements Protocol {
                 din.readFully(address);
                 int portNumber = din.readInt();
                 return new OverlayNodeSendsRegistration(address, addressLength, portNumber);
-            } else if (type == REGISTRY_REPORTS_REGISTRATION_STATUS) {
+            }
+            else if (type == REGISTRY_REPORTS_REGISTRATION_STATUS) {
                 LOG.info("Constructing new REGISTRY_REPORTS_REGISTRATION_STATUS event");
                 int successStatus = din.readInt();
                 byte informationStringLength = din.readByte();
                 byte[] informationString = new byte[informationStringLength];
                 din.readFully(informationString);
                 return new RegistryReportsRegistrationStatus(successStatus, informationString);
-            } else if (type == OVERLAY_NODE_SENDS_DEREGISTRATION) {
+            }
+            else if (type == OVERLAY_NODE_SENDS_DEREGISTRATION) {
                 LOG.info("Constructing new OVERLAY_NODE_SENDS_DEREGISTRATION event");
                 byte addressLength = din.readByte();
                 byte[] address = new byte[addressLength];
@@ -41,18 +43,20 @@ public class EventFactory implements Protocol {
                 int portNumber = din.readInt();
                 int assignedNodeID = din.readInt();
                 return new OverlayNodeSendsDeregistration(addressLength, address, portNumber, assignedNodeID);
-            } else if (type == REGISTRY_REPORTS_DEREGISTRATION_STATUS) {
+            }
+            else if (type == REGISTRY_REPORTS_DEREGISTRATION_STATUS) {
                 LOG.info("Constructing new REGISTRY_REPORTS_DEREGISTRATION_STATUS event");
                 int successStatus = din.readInt();
                 byte informationStringLength = din.readByte();
                 byte[] informationString = new byte[informationStringLength];
                 din.readFully(informationString);
                 return new RegistryReportsDeregistrationStatus(successStatus, informationString);
-            } else if (type == REGISTRY_SENDS_NODE_MANIFEST) {
+            }
+            else if (type == REGISTRY_SENDS_NODE_MANIFEST) {
                 LOG.info("Constructing new REGISTRY_SENDS_NODE_MANIFEST message");
                 byte routingTableSize = din.readByte();
                 RoutingTable routingTable = new RoutingTable();
-                for(int i=0; i < routingTableSize; i++) {
+                for (int i = 0; i < routingTableSize; i++) {
                     int hopsAway = (int) Math.pow(2, i);
                     int nodeID = din.readInt();
                     byte IPAddressLength = din.readByte();
@@ -64,21 +68,35 @@ public class EventFactory implements Protocol {
                 }
                 byte nodeIDListSize = din.readByte();
                 int[] nodeIDList = new int[nodeIDListSize];
-                for (int i=0; i < nodeIDListSize; i++) {
+                for (int i = 0; i < nodeIDListSize; i++) {
                     nodeIDList[i] = din.readInt();
                 }
                 return new RegistrySendsNodeManifest(routingTableSize, routingTable, nodeIDList);
-            } else if (type == NODE_REPORTS_OVERLAY_SETUP_STATUS) {
+            }
+            else if (type == NODE_REPORTS_OVERLAY_SETUP_STATUS) {
                 LOG.info("Constructing new NODE_REPORTS_OVERLAY_SETUP_STATUS event");
                 int successStatus = din.readInt();
                 byte informationStringLength = din.readByte();
                 byte[] informationString = new byte[informationStringLength];
                 din.readFully(informationString);
                 return new NodeReportsOverlaySetupStatus(successStatus, informationString);
-            } else if (type == REGISTRY_REQUESTS_TASK_INITIATE) {
+            }
+            else if (type == REGISTRY_REQUESTS_TASK_INITIATE) {
                 LOG.info("Constructing new REGISTRY_REQUESTS_TASK_INITIATE event");
                 int numberOfMessages = din.readInt();
                 return new RegistryRequestsTaskInitiate(numberOfMessages);
+            }
+            else if (type == OVERLAY_NODE_SENDS_DATA){
+                LOG.info("Constructing new OVERLAY_NODE_SENDS_DATA event");
+                int destinationID = din.readInt();
+                int sourceID = din.readInt();
+                int payload = din.readInt();
+                int disseminationTraceLength = din.readInt();
+                int[] disseminationTrace = new int[disseminationTraceLength];
+                for (int i=0; i < disseminationTraceLength; i++) {
+                    disseminationTrace[i] = din.readInt();
+                }
+                return new OverlayNodeSendsData(destinationID, sourceID, payload, disseminationTrace);
             } else {
                 LOG.warn("Unknown message type received: " + type);
             }
