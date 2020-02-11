@@ -75,6 +75,9 @@ public class EventFactory implements Protocol {
                 byte[] informationString = new byte[informationStringLength];
                 din.readFully(informationString);
                 return new NodeReportsOverlaySetupStatus(successStatus, informationString);
+            } else if (type == REGISTRY_REQUESTS_TASK_INITIATE) {
+                LOG.info("Constructing new REGISTRY_REQUESTS_TASK_INITIATE event");
+
             } else {
                 LOG.warn("Unknown message type received: " + type);
             }

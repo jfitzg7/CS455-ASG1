@@ -10,6 +10,7 @@ import cs455.overlay.transport.TCPServerThread;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -55,6 +56,19 @@ public class Registry extends Node implements Protocol {
                         }
                         else {
                             System.out.println("Incorrect number of arguments provided for setup-overlay command");
+                        }
+                    }
+                    if (tokenList.get(0).equals("start")) {
+                        if (tokenList.size() == 2) {
+                            try {
+                                int numberOfMessages = Integer.parseInt(tokenList.get(1));
+                                registry.initiateMessagingTask(numberOfMessages);
+                            } catch (NumberFormatException e) {
+                                System.out.println("Unable to parse the number-of-messages, it must be an integer value");
+                            }
+                        }
+                        else {
+                            System.out.println("Incorrect number of arguments provided for start command");
                         }
                     }
                     else {
@@ -221,5 +235,9 @@ public class Registry extends Node implements Protocol {
                 LOG.error("Unable to send REGISTRY_SENDS_NODE_MANIFEST to messaging node " + nodeIDList[i], e);
             }
         }
+    }
+
+    public void initiateMessagingTask(int numberOfMessages) {
+
     }
 }

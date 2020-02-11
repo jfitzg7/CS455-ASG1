@@ -25,10 +25,19 @@ public class MessagingNode extends Node implements Protocol {
     private int[] nodeIDList;
     private TCPConnectionCache connectionCache;
 
+    private int sendTracker;
+    private int receiveTracker;
+    private long sendSummation;
+    private long receiveSummation;
+
     private MessagingNode() {
         this.eventFactory = new EventFactory();
         this.nodeID = -1;
         this.connectionCache = new TCPConnectionCache();
+        this.sendTracker = 0;
+        this.receiveTracker = 0;
+        this.sendSummation = 0;
+        this.receiveSummation = 0;
     }
 
     public static void main(String[] args) {
@@ -117,6 +126,10 @@ public class MessagingNode extends Node implements Protocol {
                     LOG.info("Received node manifest message from the registry...");
                     LOG.debug("bytes received from the REGISTRY_SENDS_NODE_MANIFEST message: " + Arrays.toString(event.getBytes()));
                     handleRegistrySendsNodeManifest(event);
+                } else if (event.getType() == REGISTRY_REQUESTS_TASK_INITIATE) {
+                    LOG.info("Received task initiate message from the registry...");
+                    LOG.debug("bytes received from the REGISTRY_REQUESTS_TASK_INITIATE message: " + Arrays.toString(event.getBytes()));
+                    handleRegistryRequestsTaskInitiate(event);
                 }
                 else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");
@@ -203,6 +216,10 @@ public class MessagingNode extends Node implements Protocol {
         } catch(IOException e) {
             LOG.error("Unable to handle a REGISTRY_SENDS_NODE_MANIFEST message", e);
         }
+
+    }
+
+    private void handleRegistryRequestsTaskInitiate(Event event) {
 
     }
 }
