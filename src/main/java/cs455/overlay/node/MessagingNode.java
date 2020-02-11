@@ -139,6 +139,11 @@ public class MessagingNode extends Node implements Protocol {
                     LOG.debug("bytes received from the OVERLAY_NODE_SENDS_DATA message: " + Arrays.toString(event.getBytes()));
                     handleOverlayNodeSendsData(event);
                 }
+                else if (event.getType() == REGISTRY_REQUESTS_TRAFFIC_SUMMARY) {
+                    LOG.info("Received traffic summary request from the registry...");
+                    LOG.debug("bytes received from the REGISTRY_REQUESTS_TRAFFIC_SUMMARY message: " + Arrays.toString(event.getBytes()));
+                    handleRegistryRequestsTrafficSummary();
+                }
                 else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");
                 }
@@ -255,6 +260,8 @@ public class MessagingNode extends Node implements Protocol {
                 }
 
             }
+            //send task finished message back to the registry
+            sendOverlayNodeReportsTaskFinishedMessage();
 
         } catch(IOException e) {
             LOG.error("Unable to handle REGISTRY_REQUESTS_TASK_INITIATE message", e);
@@ -271,6 +278,16 @@ public class MessagingNode extends Node implements Protocol {
             }
         }
         return newNodeIDList;
+    }
+
+    private void sendOverlayNodeReportsTaskFinishedMessage() {
+        OverlayNodeReportsTaskFinished taskFinished = new OverlayNodeReportsTaskFinished(this.listeningAddress, this.listeningPort, this.nodeID);
+        try {
+            TCPSender sender = new TCPSender(this.registrySocket);
+            sender.sendData(taskFinished.getBytes());
+        } catch(IOException e) {
+            LOG.error("Unable to send OVERLAY_NODE_REPORTS_TASK_FINISHED message", e);
+        }
     }
 
     private void handleOverlayNodeSendsData(Event event) {
@@ -363,5 +380,41 @@ public class MessagingNode extends Node implements Protocol {
         else {
             return destinationIndex - startingIndex;
         }
+    }
+
+    private void handleRegistryRequestsTrafficSummary() {
+        OverlayNodeReportsTrafficSummary trafficSummary = new OverlayNodeReportsTrafficSummary(this.nodeID, this.sendTracker,
+                this.relayTracker, this.receiveTracker, this.sendSummation, this.receiveSummation);
+
+        try {
+            TCPSender sender = new TCPSender(this.registrySocket);
+            sender.sendData(trafficSummary.getBytes());
+        } catch (IOException e) {
+            LOG.error("Unable to send OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY message to the registry", e);
+        }
+    }
+
+    public int getSendTracker() {
+        return sendTracker;
+    }
+
+    public int getReceiveTracker() {
+        return receiveTracker;
+    }
+
+    public int getRelayTracker() {
+        return relayTracker;
+    }
+
+    public long getSendSummation() {
+        return sendSummation;
+    }
+
+    public long getReceiveSummation() {
+        return receiveSummation;
+    }
+
+    public int getNodeID() {
+        return nodeID;
     }
 }

@@ -10,10 +10,7 @@ import cs455.overlay.transport.TCPServerThread;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Scanner;
-import java.util.StringTokenizer;
+import java.util.*;
 
 public class Registry extends Node implements Protocol {
 
@@ -23,6 +20,11 @@ public class Registry extends Node implements Protocol {
 
     private int overlayNodeReportsTaskFinishedCounter;
     private final Object taskFinishedLock = new Object();
+
+    private Map<Integer, TrafficSummary> trafficSummaryTable;
+
+    private int overlayNodeReportsTrafficSummaryCounter;
+    private final Object trafficSummaryLock = new Object();
 
     private Registry() {
         this.eventFactory = new EventFactory();
@@ -105,6 +107,11 @@ public class Registry extends Node implements Protocol {
                     LOG.info("An overlay node has reported that their task is finished...");
                     LOG.debug("bytes received from OVERLAY_NODE_REPORTS_TASK_FINISHED message: " + Arrays.toString(event.getBytes()));
                     incrementTaskFinishedCounter();
+                }
+                else if (event.getType() == OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY) {
+                    LOG.info("An overlay node has reported their traffic summary...");
+                    LOG.debug("bytes received from OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY message: " + Arrays.toString(event.getBytes()));
+                    handleOverlayNodeReportsTrafficSummary(event);
                 }
                 else {
                     LOG.warn("Received an unknown event type: " + event.getType());
@@ -262,6 +269,7 @@ public class Registry extends Node implements Protocol {
         LOG.info("Waiting for messaging nodes to report task finished...");
         waitForNodesToReportTaskFinished();
         LOG.info("All messaging nodes have reported task finished! sending requests for traffic summary...");
+        requestTrafficSummary();
     }
 
     private void waitForNodesToReportTaskFinished() {
@@ -288,7 +296,98 @@ public class Registry extends Node implements Protocol {
     }
 
     private void requestTrafficSummary() {
+        this.trafficSummaryTable = new HashMap<>();
+        this.overlayNodeReportsTrafficSummaryCounter = 0;
+        RegistryRequestsTrafficSummary trafficSummaryRequest = new RegistryRequestsTrafficSummary();
 
+        for(int nodeID : this.registrationTable.getNodeIDList()) {
+            MessagingNodeInfo info = this.registrationTable.getEntry(nodeID);
+            Socket socket = info.getSocket();
+            try {
+                TCPSender sender = new TCPSender(socket);
+                sender.sendData(trafficSummaryRequest.getBytes());
+            } catch (IOException e) {
+                LOG.error("Unable to send REGISTRY_REQUESTS_TRAFFIC_SUMMARY to node " + nodeID);
+            }
+        }
+
+        LOG.info("Waiting for messaging nodes to report traffic summaries");
+        waitForNodesToReportTrafficSummaries();
+        LOG.info("All messaging nodes have reported their traffic summaries!");
+        LOG.info("Printing out statistics...");
+        printTrafficSummaries();
     }
 
+    private void waitForNodesToReportTrafficSummaries() {
+        // (Consumer thread) wait for nodes to send their OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY messages
+        int numberOfOverlayNodes = this.registrationTable.countEntries();
+
+        try {
+            synchronized (trafficSummaryLock) {
+                while(overlayNodeReportsTrafficSummaryCounter < numberOfOverlayNodes) {
+                    trafficSummaryLock.wait();
+                }
+            }
+        } catch(InterruptedException e) {
+            LOG.error("An error occurred while waiting for the overlay nodes to finish reporting their traffic summaries", e);
+        }
+    }
+
+    private void handleOverlayNodeReportsTrafficSummary(Event event) {
+        try {
+            OverlayNodeReportsTrafficSummaryHandler handler = new OverlayNodeReportsTrafficSummaryHandler(event);
+            int assignedNodeID = handler.getAssignedNodeID();
+            int sentPackets = handler.getSentPackets();
+            int relayedPackets = handler.getRelayedPackets();
+            int receivedPackets = handler.getReceivedPackets();
+            long sendSummation = handler.getSendSummation();
+            long receiveSummation = handler.getReceiveSummation();
+
+            TrafficSummary summary = new TrafficSummary(sentPackets, receivedPackets, relayedPackets, sendSummation, receiveSummation);
+            addTrafficSummaryToTable(assignedNodeID, summary);
+            incrementTrafficSummaryCounter();
+        } catch (IOException e) {
+            LOG.error("Unable to handle OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY message", e);
+        }
+    }
+
+    private void incrementTrafficSummaryCounter() {
+        // (Producer thread) increment the counter when a node reports a traffic summary and notify the consumer thread
+        synchronized (trafficSummaryLock) {
+            this.overlayNodeReportsTrafficSummaryCounter++;
+            trafficSummaryLock.notify();
+        }
+    }
+
+    private synchronized void addTrafficSummaryToTable(int nodeID, TrafficSummary summary) {
+        this.trafficSummaryTable.put(nodeID, summary);
+    }
+
+    private void printTrafficSummaries() {
+        System.out.printf("%20s%20s%20s%20s%30s%30s\n", "", "Packets Sent", "Packets Received", "Packets Relayed", "Sum Values Sent", "Sum Values Received");
+        int[] nodeIDList = registrationTable.getNodeIDList();
+        int totalSentPackets = 0;
+        int totalReceivedPackets = 0;
+        int totalRelayedPackets = 0;
+        long totalSendSummation = 0;
+        long totalReceiveSummation = 0;
+        for (int i=0; i < nodeIDList.length; i++) {
+            int nodeID = nodeIDList[i];
+            TrafficSummary summary = trafficSummaryTable.get(nodeID);
+            int sentPackets = summary.getSentPackets();
+            totalSentPackets += sentPackets;
+            int receivedPackets = summary.getReceivedPackets();
+            totalReceivedPackets += receivedPackets;
+            int relayedPackets = summary.getRelayedPackets();
+            totalRelayedPackets += relayedPackets;
+            long sendSummation = summary.getSendSummation();
+            totalSendSummation += sendSummation;
+            long receiveSummation = summary.getReceiveSummation();
+            totalReceiveSummation += receiveSummation;
+            System.out.printf("%20s%20s%20s%20s%30s%30s\n", "Node " + nodeID, "" + sentPackets, "" + receivedPackets,
+                    "" + relayedPackets, "" + sendSummation, "" + receiveSummation);
+        }
+        System.out.printf("%20s%20s%20s%20s%30s%30s\n", "Sum", "" + totalSentPackets, "" + totalReceivedPackets,
+                "" + totalRelayedPackets, "" + totalSendSummation, "" + totalReceiveSummation);
+    }
 }

@@ -97,7 +97,31 @@ public class EventFactory implements Protocol {
                     disseminationTrace[i] = din.readInt();
                 }
                 return new OverlayNodeSendsData(destinationID, sourceID, payload, disseminationTrace);
-            } else {
+            }
+            else if (type == OVERLAY_NODE_REPORTS_TASK_FINISHED) {
+                LOG.info("Constructing new OVERLAY_NODE_REPORTS_TASK_FINISHED event");
+                byte IPAddressLength = din.readByte();
+                byte[] IPAddress = new byte[IPAddressLength];
+                din.readFully(IPAddress);
+                int portNumber = din.readInt();
+                int nodeID = din.readInt();
+                return new OverlayNodeReportsTaskFinished(IPAddress, portNumber, nodeID);
+            }
+            else if (type == REGISTRY_REQUESTS_TRAFFIC_SUMMARY) {
+                LOG.info("Constructing new REGISTRY_REQUESTS_TRAFFIC_SUMMARY event");
+                return new RegistryRequestsTrafficSummary();
+            }
+            else if (type == OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY) {
+                LOG.info("Constructing new OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY event");
+                int assignedNodeID = din.readInt();
+                int sentPackets = din.readInt();
+                int relayedPackets = din.readInt();
+                long sendSummation = din.readLong();
+                int receivedPackets = din.readInt();
+                long receiveSummation = din.readLong();
+                return new OverlayNodeReportsTrafficSummary(assignedNodeID, sentPackets, relayedPackets, receivedPackets, sendSummation, receiveSummation);
+            }
+            else {
                 LOG.warn("Unknown message type received: " + type);
             }
             baInputStream.close();
