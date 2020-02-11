@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class MessagingNode extends Node implements Protocol {
 
@@ -22,7 +24,7 @@ public class MessagingNode extends Node implements Protocol {
     private InteractiveMessagingNodeCommandParser commandParser;
 
     private RoutingTable routingTable;
-    private int[] nodeIDList;
+    private int[] overlayNodeIDList;
     private TCPConnectionCache connectionCache;
 
     private int sendTracker;
@@ -126,10 +128,16 @@ public class MessagingNode extends Node implements Protocol {
                     LOG.info("Received node manifest message from the registry...");
                     LOG.debug("bytes received from the REGISTRY_SENDS_NODE_MANIFEST message: " + Arrays.toString(event.getBytes()));
                     handleRegistrySendsNodeManifest(event);
-                } else if (event.getType() == REGISTRY_REQUESTS_TASK_INITIATE) {
+                }
+                else if (event.getType() == REGISTRY_REQUESTS_TASK_INITIATE) {
                     LOG.info("Received task initiate message from the registry...");
                     LOG.debug("bytes received from the REGISTRY_REQUESTS_TASK_INITIATE message: " + Arrays.toString(event.getBytes()));
                     handleRegistryRequestsTaskInitiate(event);
+                }
+                else if (event.getType() == OVERLAY_NODE_SENDS_DATA) {
+                    LOG.info("Received data from an overlay node...");
+                    LOG.debug("bytes received from the OVERLAY_NODE_SENDS_DATA message: " + Arrays.toString(event.getBytes()));
+                    handleOverlayNodeSendsData(event);
                 }
                 else {
                     LOG.error("Something went wrong while reading the event type in onEvent()");
@@ -189,6 +197,7 @@ public class MessagingNode extends Node implements Protocol {
         try {
             RegistrySendsNodeManifestHandler handler = new RegistrySendsNodeManifestHandler(event);
             this.routingTable = handler.getRoutingTable();
+            this.overlayNodeIDList = handler.getNodeIDList();
             int successStatus = this.nodeID;
             String informationString = "Unable to establish connection to node IDs:";
             for(int nodeID : this.routingTable.getNodeIDList()) {
@@ -220,6 +229,38 @@ public class MessagingNode extends Node implements Protocol {
     }
 
     private void handleRegistryRequestsTaskInitiate(Event event) {
+        try {
+            RegistryRequestsTaskInitiateHandler handler = new RegistryRequestsTaskInitiateHandler(event);
+            Random rand = new Random();
+            int numberOfMessages = handler.getNumberOfMessages();
+            for(int i=0; i < numberOfMessages; i++) {
+                int randomIndex = rand.nextInt(this.overlayNodeIDList.length);
+                int randomNodeID = this.overlayNodeIDList[randomIndex];
+                int payload = (int) ThreadLocalRandom.current().nextLong(Integer.MIN_VALUE, (long) Integer.MAX_VALUE + 1);
+                int[] disseminationTrace = new int[0];
+                OverlayNodeSendsData data = new OverlayNodeSendsData(randomNodeID, this.nodeID, payload, disseminationTrace);
+            }
 
+        } catch(IOException e) {
+            LOG.error("Unable to handle REGISTRY_REQUESTS_TASK_INITIATE message", e);
+        }
+    }
+
+    private void handleOverlayNodeSendsData(Event event) {
+
+    }
+
+    private int selectNodeToSendDataTo(int destinationID) {
+        int[] routingTableNodeIDs = this.routingTable.getNodeIDListSortedByHopsAway();
+        int bestChoiceID = -1;
+        for (int i=0; i < routingTableNodeIDs.length; i++) {
+            if(routingTableNodeIDs[i] == destinationID) {
+                return routingTableNodeIDs[i];
+            }
+            else {
+
+            }
+        }
+        return bestChoiceID;
     }
 }

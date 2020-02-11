@@ -38,6 +38,16 @@ public class RoutingTable {
         return nodeIDList;
     }
 
+    public int[] getNodeIDListSortedByHopsAway() {
+        int routingTableSize = this.routingTable.size();
+        int[] nodeIDListSortedByHopsAway = new int[routingTableSize];
+        for (int i=0; i < routingTableSize; i++) {
+            int hopsAway = (int) Math.pow(2, i);
+            nodeIDListSortedByHopsAway[i] = getEntryByHopsAway(hopsAway).getNodeID();
+        }
+        return nodeIDListSortedByHopsAway;
+    }
+
     public RoutingEntry getEntryByHopsAway(int hops) {
         for (RoutingEntry entry : routingTable) {
             if (entry.getHopsAway() == hops) {

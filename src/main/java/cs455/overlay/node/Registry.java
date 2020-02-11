@@ -10,7 +10,6 @@ import cs455.overlay.transport.TCPServerThread;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -21,6 +20,9 @@ public class Registry extends Node implements Protocol {
     private static Logger LOG = LogManager.getLogger(Registry.class);
 
     private RegistrationTable registrationTable;
+
+    private int overlayNodeReportsTaskFinishedCounter;
+    private final Object taskFinishedLock = new Object();
 
     private Registry() {
         this.eventFactory = new EventFactory();
@@ -98,6 +100,11 @@ public class Registry extends Node implements Protocol {
                 else if (event.getType() == NODE_REPORTS_OVERLAY_SETUP_STATUS) {
                     LOG.info("Received an overlay setup status from one of the messaging nodes...");
                     LOG.debug("bytes received from NODE_REPORTS_OVERLAY_SETUP_STATUS message: " + Arrays.toString(event.getBytes()));
+                }
+                else if (event.getType() == OVERLAY_NODE_REPORTS_TASK_FINISHED) {
+                    LOG.info("An overlay node has reported that their task is finished...");
+                    LOG.debug("bytes received from OVERLAY_NODE_REPORTS_TASK_FINISHED message: " + Arrays.toString(event.getBytes()));
+                    incrementTaskFinishedCounter();
                 }
                 else {
                     LOG.warn("Received an unknown event type: " + event.getType());
@@ -238,6 +245,50 @@ public class Registry extends Node implements Protocol {
     }
 
     public void initiateMessagingTask(int numberOfMessages) {
+        this.overlayNodeReportsTaskFinishedCounter = 0;
+        RegistryRequestsTaskInitiate taskInitiate = new RegistryRequestsTaskInitiate(numberOfMessages);
+
+        for(int nodeID : this.registrationTable.getNodeIDList()) {
+            MessagingNodeInfo info = this.registrationTable.getEntry(nodeID);
+            Socket socket = info.getSocket();
+            try {
+                TCPSender sender = new TCPSender(socket);
+                sender.sendData(taskInitiate.getBytes());
+            } catch (IOException e) {
+                LOG.error("Unable to send REGISTRY_REQUEST_TASK_INITIATE message to node " + nodeID);
+            }
+        }
+
+        LOG.info("Waiting for messaging nodes to report task finished...");
+        waitForNodesToReportTaskFinished();
+        LOG.info("All messaging nodes have reported task finished! sending requests for traffic summary...");
+    }
+
+    private void waitForNodesToReportTaskFinished() {
+        // (Consumer thread) Wait for the nodes to send their OVERLAY_NODE_REPORTS_TASK_FINISHED messages
+        int numberOfOverlayNodes = this.registrationTable.countEntries();
+
+        try {
+            synchronized (taskFinishedLock) {
+                while(overlayNodeReportsTaskFinishedCounter < numberOfOverlayNodes) {
+                    taskFinishedLock.wait();
+                }
+            }
+        } catch(InterruptedException e) {
+            LOG.error("An error occurred while waiting for the overlay nodes to finish reporting their tasks", e);
+        }
+    }
+
+    private void incrementTaskFinishedCounter() {
+        // (Producer thread) increment the counter when a node reports task finished and notify the consumer thread
+        synchronized (taskFinishedLock) {
+            this.overlayNodeReportsTaskFinishedCounter++;
+            taskFinishedLock.notify();
+        }
+    }
+
+    private void requestTrafficSummary() {
 
     }
+
 }
