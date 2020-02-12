@@ -376,9 +376,8 @@ public class Registry extends Node implements Protocol {
         int totalRelayedPackets = 0;
         long totalSendSummation = 0;
         long totalReceiveSummation = 0;
-        for (int i=0; i < nodeIDList.length; i++) {
-            int nodeID = nodeIDList[i];
-            TrafficSummary summary = trafficSummaryTable.get(nodeID);
+        for (int nodeID : nodeIDList) {
+            TrafficSummary summary = getTrafficSummary(nodeID);
             int sentPackets = summary.getSentPackets();
             totalSentPackets += sentPackets;
             int receivedPackets = summary.getReceivedPackets();
@@ -394,5 +393,9 @@ public class Registry extends Node implements Protocol {
         }
         System.out.printf("%20s%20s%20s%20s%30s%30s\n", "Sum", "" + totalSentPackets, "" + totalReceivedPackets,
                 "" + totalRelayedPackets, "" + totalSendSummation, "" + totalReceiveSummation);
+    }
+
+    private synchronized TrafficSummary getTrafficSummary(int nodeID) {
+        return this.trafficSummaryTable.get(nodeID);
     }
 }
