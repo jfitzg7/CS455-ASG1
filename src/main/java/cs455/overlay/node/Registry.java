@@ -268,7 +268,12 @@ public class Registry extends Node implements Protocol {
 
         LOG.info("Waiting for messaging nodes to report task finished...");
         waitForNodesToReportTaskFinished();
-        LOG.info("All messaging nodes have reported task finished! sending requests for traffic summary...");
+        LOG.info("All messaging nodes have reported task finished! sending requests for traffic summary in 10 seconds...");
+        try {
+            Thread.sleep(10000);
+        } catch(InterruptedException e) {
+            LOG.error("the thread was interrupted while waiting before printing traffic summaries", e);
+        }
         requestTrafficSummary();
     }
 

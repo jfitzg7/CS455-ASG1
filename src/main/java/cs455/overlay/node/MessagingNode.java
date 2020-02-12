@@ -38,6 +38,7 @@ public class MessagingNode extends Node implements Protocol {
         this.connectionCache = new TCPConnectionCache();
         this.sendTracker = 0;
         this.receiveTracker = 0;
+        this.relayTracker = 0;
         this.sendSummation = 0;
         this.receiveSummation = 0;
     }
@@ -235,6 +236,7 @@ public class MessagingNode extends Node implements Protocol {
 
     private void handleRegistryRequestsTaskInitiate(Event event) {
         try {
+            LOG.info("This nodes ID = " + this.nodeID);
             RegistryRequestsTaskInitiateHandler handler = new RegistryRequestsTaskInitiateHandler(event);
             Random rand = new Random();
             int numberOfMessages = handler.getNumberOfMessages();
@@ -292,6 +294,7 @@ public class MessagingNode extends Node implements Protocol {
 
     private void handleOverlayNodeSendsData(Event event) {
         try {
+            LOG.info("This nodes ID = " + this.nodeID);
             OverlayNodeSendsDataHandler handler = new OverlayNodeSendsDataHandler(event);
             if (handler.getDestinationID() == this.nodeID) {
                 LOG.info("Received an OVERLAY_NODE_SENDS_DATA message destined for this node!");
@@ -383,34 +386,48 @@ public class MessagingNode extends Node implements Protocol {
     }
 
     private void handleRegistryRequestsTrafficSummary() {
-        OverlayNodeReportsTrafficSummary trafficSummary = new OverlayNodeReportsTrafficSummary(this.nodeID, this.sendTracker,
-                this.relayTracker, this.receiveTracker, this.sendSummation, this.receiveSummation);
+        int sendTracker = this.getSendTracker();
+        int receiveTracker = this.getReceiveTracker();
+        int relayTracker = this.getRelayTracker();
+        long sendSummation = this.getSendSummation();
+        long receiveSummation = this.getReceiveSummation();
+        OverlayNodeReportsTrafficSummary trafficSummary = new OverlayNodeReportsTrafficSummary(this.nodeID, sendTracker,
+                relayTracker, receiveTracker, sendSummation, receiveSummation);
 
         try {
             TCPSender sender = new TCPSender(this.registrySocket);
             sender.sendData(trafficSummary.getBytes());
+            resetTrackersAndSummations();
         } catch (IOException e) {
             LOG.error("Unable to send OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY message to the registry", e);
         }
     }
 
-    public int getSendTracker() {
+    private synchronized void resetTrackersAndSummations() {
+        this.sendTracker = 0;
+        this.receiveTracker = 0;
+        this.relayTracker = 0;
+        this.receiveSummation = 0;
+        this.sendSummation = 0;
+    }
+
+    public synchronized int getSendTracker() {
         return sendTracker;
     }
 
-    public int getReceiveTracker() {
+    public synchronized int getReceiveTracker() {
         return receiveTracker;
     }
 
-    public int getRelayTracker() {
+    public synchronized int getRelayTracker() {
         return relayTracker;
     }
 
-    public long getSendSummation() {
+    public synchronized long getSendSummation() {
         return sendSummation;
     }
 
-    public long getReceiveSummation() {
+    public synchronized long getReceiveSummation() {
         return receiveSummation;
     }
 
