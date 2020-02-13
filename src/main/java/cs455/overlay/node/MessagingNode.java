@@ -20,7 +20,6 @@ public class MessagingNode extends Node implements Protocol {
     private byte listeningAddressLength;
     private Socket registrySocket;
     private int nodeID;
-    private InteractiveMessagingNodeCommandParser commandParser;
 
     private RoutingTable routingTable;
     private int[] overlayNodeIDList;
@@ -54,7 +53,7 @@ public class MessagingNode extends Node implements Protocol {
                 messagingNode.sendRegistrationMessage();
 
                 //start command parser thread
-                Thread commandParserThread = messagingNode.startCommandParserThread();
+                messagingNode.startCommandParserThread();
             } catch (NumberFormatException e) {
                 LOG.error("Exception occurred in MessageNode main method", e);
             }
@@ -103,12 +102,9 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    private Thread startCommandParserThread() {
-        //start command parser thread
-        this.commandParser = new InteractiveMessagingNodeCommandParser(this);
-        Thread commandParserThread = new Thread(this.commandParser);
-        commandParserThread.start();
-        return commandParserThread;
+    private void startCommandParserThread() {
+        InteractiveMessagingNodeCommandParser commandParser = new InteractiveMessagingNodeCommandParser(this);
+        (new Thread(commandParser)).start();
     }
 
     @Override
