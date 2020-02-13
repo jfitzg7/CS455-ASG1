@@ -62,7 +62,7 @@ public class Registry extends Node implements Protocol {
                             System.out.println("Incorrect number of arguments provided for setup-overlay command");
                         }
                     }
-                    if (tokenList.get(0).equals("start")) {
+                    else if (tokenList.get(0).equals("start")) {
                         if (tokenList.size() == 2) {
                             try {
                                 int numberOfMessages = Integer.parseInt(tokenList.get(1));
