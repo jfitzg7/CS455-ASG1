@@ -19,6 +19,9 @@ public class TCPSender {
 
     public void sendData(byte[] dataToSend) throws IOException {
         int dataLength = dataToSend.length;
+        if (dataLength == 0) {
+            LOG.warn("Sending a byte array with nothing in it!");
+        }
         LOG.info("Length of data being sent: " + dataLength);
         LOG.info("Data being sent: " + Arrays.toString(dataToSend));
         dout.writeInt(dataLength);
