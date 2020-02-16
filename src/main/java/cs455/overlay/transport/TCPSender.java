@@ -22,8 +22,8 @@ public class TCPSender {
         if (dataLength == 0) {
             LOG.warn("Sending a byte array with nothing in it!");
         }
-        LOG.info("Length of data being sent: " + dataLength);
-        LOG.info("Data being sent: " + Arrays.toString(dataToSend));
+        LOG.debug("Length of data being sent: " + dataLength);
+        LOG.debug("Data being sent: " + Arrays.toString(dataToSend));
         dout.writeInt(dataLength);
         dout.write(dataToSend, 0, dataLength);
         dout.flush();

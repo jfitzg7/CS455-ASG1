@@ -3,6 +3,8 @@ package cs455.overlay.util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 
 public class RegistrationTable {
@@ -42,12 +44,12 @@ public class RegistrationTable {
         }
     }
 
-    private boolean isTableFull() {
+    private synchronized boolean isTableFull() {
         // If there is a null value in the table, then that means there is an open ID slot
         return !(registrationTable.containsValue(null));
     }
 
-    private int[] getAvailableIDList() {
+    private synchronized int[] getAvailableIDList() {
         int[] availableNodeIDList = new int[countEmptyEntries()];
         int listCounter = 0;
         for(int i=0; i < 128; i++) {
@@ -59,7 +61,7 @@ public class RegistrationTable {
         return availableNodeIDList;
     }
 
-    private int countEmptyEntries() {
+    private synchronized int countEmptyEntries() {
         int numberOfEmptyEntries = 0;
         for (Map.Entry<Integer, MessagingNodeInfo> entry : registrationTable.entrySet()) {
             if (Objects.equals(null, entry.getValue())) {
@@ -121,5 +123,19 @@ public class RegistrationTable {
             }
         }
         return nodeIDList;
+    }
+
+    public void printMessagingNodes() {
+        int[] nodeIDList = getNodeIDList();
+        for (int nodeID : nodeIDList) {
+            MessagingNodeInfo nodeInfo = getEntry(nodeID);
+            LogicalNetworkAddress networkAddress = nodeInfo.getNetworkAddress();
+            try {
+                String IPAddressString = InetAddress.getByAddress(networkAddress.getIPAddress()).getHostAddress();
+                System.out.printf("%-20s %20s, %20s\n", "Messaging node " + nodeID + ":", "IP address = " + IPAddressString, "Port number = " + networkAddress.getPortNumber());
+            } catch(UnknownHostException e) {
+                LOG.error("Unable to convert the IP address of messaging node " + nodeID + " to a string", e);
+            }
+        }
     }
 }

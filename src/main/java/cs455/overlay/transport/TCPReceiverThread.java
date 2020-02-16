@@ -17,7 +17,7 @@ public class TCPReceiverThread implements Runnable {
 
     public TCPReceiverThread(Socket socket, Node node) throws IOException {
         this.socket = socket;
-        din = new DataInputStream(socket.getInputStream());
+        din = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
         this.node = node;
     }
 

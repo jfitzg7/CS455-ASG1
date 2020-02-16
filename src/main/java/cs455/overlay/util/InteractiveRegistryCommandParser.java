@@ -52,6 +52,9 @@ public class InteractiveRegistryCommandParser implements Runnable {
                         System.out.println("Incorrect number of arguments provided for start command");
                     }
                 }
+                else if (tokenList.get(0).equals("list-messaging-nodes")) {
+                    registry.printRegisteredMessagingNodes();
+                }
                 else {
                     System.out.println("Unknown argument provided");
                 }

@@ -33,17 +33,23 @@ public class Registry extends Node implements Protocol {
 
     public static void main(String[] args) {
         try {
-            Registry registry = new Registry();
-            ServerSocket serverSocket = new ServerSocket(5000);
+            if (args.length == 1) {
+                int portNumber = Integer.parseInt(args[0]);
+                Registry registry = new Registry();
+                ServerSocket serverSocket = new ServerSocket(portNumber);
 
-            TCPServerThread server = new TCPServerThread(serverSocket, registry);
-            LOG.info("Starting server thread...");
-            (new Thread(server)).start();
+                TCPServerThread server = new TCPServerThread(serverSocket, registry);
+                LOG.info("Starting server thread...");
+                (new Thread(server)).start();
 
-            InteractiveRegistryCommandParser commandParser = new InteractiveRegistryCommandParser(registry);
-            (new Thread(commandParser)).start();
+                InteractiveRegistryCommandParser commandParser = new InteractiveRegistryCommandParser(registry);
+                (new Thread(commandParser)).start();
+            }
+            else {
+                System.out.println("Incorrect number of arguments provided");
+            }
         } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
+            LOG.error(ioe.getMessage(), ioe);
         }
     }
 
@@ -76,7 +82,7 @@ public class Registry extends Node implements Protocol {
                     handleOverlayNodeReportsTrafficSummary(event);
                 }
                 else {
-                    LOG.warn("Received an unknown event type: " + event.getType());
+                    LOG.warn("Received an unknown event type that cannot be handled by the registry: " + event.getType());
                 }
             } catch (NullPointerException e) {
                 LOG.error("A NullPointerException occurred while trying to get the event type", e);
@@ -91,12 +97,7 @@ public class Registry extends Node implements Protocol {
         try {
             OverlayNodeSendsRegistrationHandler handler = new OverlayNodeSendsRegistrationHandler(event);
 
-            /* TODO NOTE:
-             * I should probably add custom exceptions (mismatched or already registered)
-             * to handle errors when adding new entries! returning boolean doesn't give
-             * enough information to handle properly.
-             */
-            LOG.info("handleOverlayNodeSendsRegistration: Attempting to add new MessagingNode to the registration table...");
+            LOG.info("Attempting to add new MessagingNode to the registration table...");
             MessagingNodeInfo messagingNodeInfo = constructNewMessagingNodeInfo(handler.getIPAddress(), handler.getPortNumber(), socket);
             int successStatus = -1;
             String informationString = "";
@@ -108,11 +109,11 @@ public class Registry extends Node implements Protocol {
                     numberOfEntries + ")";
                 } else {
                     // TODO this needs to be more specific, i.e. make new exceptions to handle specific cases
-                    LOG.warn("handleOverlayNodeSendsRegistration: Failed to add MessagingNode to the table");
+                    LOG.warn("Failed to add MessagingNode to the table");
                     informationString = "Unable to add the MessagingNode to the registration table";
                 }
             } else {
-                LOG.warn("handleOverlayNodeSendsRegistration: Unable to register the MessagingNode because the IP addresses " +
+                LOG.warn("Unable to register the MessagingNode because the IP addresses " +
                         "don't match. address in message: " + Arrays.toString(handler.getIPAddress()) + " address of socket: " +
                         Arrays.toString(socket.getInetAddress().getAddress()));
                 informationString = "The IP address in the message does not match the actual IP address of the sender";
@@ -148,7 +149,6 @@ public class Registry extends Node implements Protocol {
             OverlayNodeSendsDeregistrationHandler handler = new OverlayNodeSendsDeregistrationHandler(event);
             LogicalNetworkAddress networkAddress = new LogicalNetworkAddress(handler.getIPAddress(), handler.getPortNumber());
             MessagingNodeInfo recvdNodeInfo = new MessagingNodeInfo(networkAddress, socket);
-
             int successStatus = -1;
             String informationString = "";
             if (this.registrationTable.containsEntry(recvdNodeInfo)) {
@@ -167,15 +167,10 @@ public class Registry extends Node implements Protocol {
                 //return an error message because there is no entry for the address in the message
                 informationString = "Deregistration request unsuccessful. The messaging node is not currently registered";
             }
-
             RegistryReportsDeregistrationStatus deregistrationStatus = new
                     RegistryReportsDeregistrationStatus(successStatus, informationString.getBytes());
-
             TCPSender sender = new TCPSender(socket);
-
             sender.sendData(deregistrationStatus.getBytes());
-
-
         } catch(IOException e) {
             LOG.error("Unable to handle an OVERLAY_NODE_SENDS_DEREGISTRATION message", e);
         }
@@ -216,7 +211,6 @@ public class Registry extends Node implements Protocol {
     public void initiateMessagingTask(int numberOfMessages) {
         this.overlayNodeReportsTaskFinishedCounter = 0;
         RegistryRequestsTaskInitiate taskInitiate = new RegistryRequestsTaskInitiate(numberOfMessages);
-
         for(int nodeID : this.registrationTable.getNodeIDList()) {
             MessagingNodeInfo info = this.registrationTable.getEntry(nodeID);
             Socket socket = info.getSocket();
@@ -227,7 +221,6 @@ public class Registry extends Node implements Protocol {
                 LOG.error("Unable to send REGISTRY_REQUEST_TASK_INITIATE message to node " + nodeID);
             }
         }
-
         LOG.info("Waiting for messaging nodes to report task finished...");
         waitForNodesToReportTaskFinished();
         LOG.info("All messaging nodes have reported task finished! sending requests for traffic summary in 10 seconds...");
@@ -240,7 +233,7 @@ public class Registry extends Node implements Protocol {
     }
 
     private void waitForNodesToReportTaskFinished() {
-        // (Consumer thread) Wait for the nodes to send their OVERLAY_NODE_REPORTS_TASK_FINISHED messages
+        // (Consumer) Wait for the nodes to send their OVERLAY_NODE_REPORTS_TASK_FINISHED messages
         int numberOfOverlayNodes = this.registrationTable.countEntries();
 
         try {
@@ -255,7 +248,7 @@ public class Registry extends Node implements Protocol {
     }
 
     private void incrementTaskFinishedCounter() {
-        // (Producer thread) increment the counter when a node reports task finished and notify the consumer thread
+        // (Producer) increment the counter when a node reports task finished and notify the consumer thread
         synchronized (taskFinishedLock) {
             this.overlayNodeReportsTaskFinishedCounter++;
             taskFinishedLock.notify();
@@ -266,7 +259,6 @@ public class Registry extends Node implements Protocol {
         this.trafficSummaryTable = new HashMap<>();
         this.overlayNodeReportsTrafficSummaryCounter = 0;
         RegistryRequestsTrafficSummary trafficSummaryRequest = new RegistryRequestsTrafficSummary();
-
         for(int nodeID : this.registrationTable.getNodeIDList()) {
             MessagingNodeInfo info = this.registrationTable.getEntry(nodeID);
             Socket socket = info.getSocket();
@@ -277,7 +269,6 @@ public class Registry extends Node implements Protocol {
                 LOG.error("Unable to send REGISTRY_REQUESTS_TRAFFIC_SUMMARY to node " + nodeID);
             }
         }
-
         LOG.info("Waiting for messaging nodes to report traffic summaries");
         waitForNodesToReportTrafficSummaries();
         LOG.info("All messaging nodes have reported their traffic summaries!");
@@ -286,9 +277,8 @@ public class Registry extends Node implements Protocol {
     }
 
     private void waitForNodesToReportTrafficSummaries() {
-        // (Consumer thread) wait for nodes to send their OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY messages
+        // (Consumer) wait for nodes to send their OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY messages
         int numberOfOverlayNodes = this.registrationTable.countEntries();
-
         try {
             synchronized (trafficSummaryLock) {
                 while(overlayNodeReportsTrafficSummaryCounter < numberOfOverlayNodes) {
@@ -319,7 +309,7 @@ public class Registry extends Node implements Protocol {
     }
 
     private void incrementTrafficSummaryCounter() {
-        // (Producer thread) increment the counter when a node reports a traffic summary and notify the consumer thread
+        // (Producer) increment the counter when a node reports a traffic summary and notify the consumer
         synchronized (trafficSummaryLock) {
             this.overlayNodeReportsTrafficSummaryCounter++;
             trafficSummaryLock.notify();
@@ -359,5 +349,9 @@ public class Registry extends Node implements Protocol {
 
     private synchronized TrafficSummary getTrafficSummary(int nodeID) {
         return this.trafficSummaryTable.get(nodeID);
+    }
+
+    public void printRegisteredMessagingNodes() {
+        this.registrationTable.printMessagingNodes();
     }
 }
