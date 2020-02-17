@@ -354,4 +354,8 @@ public class Registry extends Node implements Protocol {
     public void printRegisteredMessagingNodes() {
         this.registrationTable.printMessagingNodes();
     }
+
+    public int getNumberOfRegisteredMessagingNodes() {
+        return this.registrationTable.countEntries();
+    }
 }
