@@ -17,7 +17,7 @@ public class InteractiveRegistryCommandParser implements Runnable {
     @Override
     public void run() {
         Scanner sc = new Scanner(System.in);
-        System.out.print("Enter a command: ");
+        System.out.print("Enter a registry command: ");
         while(sc.hasNextLine()) {
             String command = sc.nextLine();
             StringTokenizer st = new StringTokenizer(command);
@@ -27,17 +27,7 @@ public class InteractiveRegistryCommandParser implements Runnable {
             }
             if (tokenList.size() > 0) {
                 if (tokenList.get(0).equals("setup-overlay")) {
-                    if (tokenList.size() == 2) {
-                        try {
-                            int routingTableSize = Integer.parseInt(tokenList.get(1));
-                            registry.setupOverlay(routingTableSize);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Unable to parse the number-of-routing-table-entries, it must be an integer value");
-                        }
-                    }
-                    else {
-                        System.out.println("Incorrect number of arguments provided for setup-overlay command");
-                    }
+                    handleSetupOverlayCommand(tokenList);
                 }
                 else if (tokenList.get(0).equals("start")) {
                     if (tokenList.size() == 2) {
@@ -59,7 +49,40 @@ public class InteractiveRegistryCommandParser implements Runnable {
                     System.out.println("Unknown argument provided");
                 }
             }
-            System.out.print("Enter a command: ");
+            System.out.print("Enter a registry command: ");
         }
     }
+
+    private void handleSetupOverlayCommand(ArrayList<String> tokenList) {
+        if (tokenList.size() == 2) {
+            try {
+                int numberOfRoutingTableEntries = Integer.parseInt(tokenList.get(1));
+                int numberOfRegisteredNodes = registry.getNumberOfRegisteredMessagingNodes();
+                if (checkForEnoughRegisteredNodesToSetupOverlay(numberOfRoutingTableEntries, numberOfRegisteredNodes)) {
+                    registry.setupOverlay(numberOfRoutingTableEntries);
+                }
+                else {
+                    int minimumRequiredNodes = (int) Math.pow(2, numberOfRoutingTableEntries - 1) + 1;
+                    System.out.println("The minimum required nodes for routing tables of size " + numberOfRoutingTableEntries +
+                            " is " + minimumRequiredNodes + ", there are currently " + numberOfRegisteredNodes + " messaging nodes registered");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Unable to parse the number-of-routing-table-entries, it must be an integer value");
+            }
+        }
+        else {
+        System.out.println("Incorrect number of arguments provided to the setup-overlay command");
+        }
+    }
+
+    private boolean checkForEnoughRegisteredNodesToSetupOverlay(int numberOfRoutingTableEntries, int numberOfRegisteredNodes) {
+        int minimumRequiredNodes = (int) Math.pow(2, numberOfRoutingTableEntries - 1) + 1;
+        if (numberOfRegisteredNodes < minimumRequiredNodes) {
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
 }

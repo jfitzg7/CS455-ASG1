@@ -232,7 +232,6 @@ public class MessagingNode extends Node implements Protocol {
 
     private void handleRegistryRequestsTaskInitiate(Event event) {
         try {
-            LOG.info("This nodes ID = " + this.nodeID);
             RegistryRequestsTaskInitiateHandler handler = new RegistryRequestsTaskInitiateHandler(event);
             Random rand = new Random();
             int numberOfMessages = handler.getNumberOfMessages();
@@ -290,7 +289,6 @@ public class MessagingNode extends Node implements Protocol {
 
     private void handleOverlayNodeSendsData(Event event) {
         try {
-            LOG.info("This nodes ID = " + this.nodeID);
             OverlayNodeSendsDataHandler handler = new OverlayNodeSendsDataHandler(event);
             if (handler.getDestinationID() == this.nodeID) {
                 LOG.info("Received an OVERLAY_NODE_SENDS_DATA message destined for this node!");
