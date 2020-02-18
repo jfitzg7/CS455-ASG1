@@ -54,6 +54,9 @@ IMPORTANT THINGS TO NOTE:
     the log4j2.xml file slightly. On line 12 of log4j2.xml, change <Root level="off"> to <Root level="warn"> to turn on WARN and ERROR statements. After doing this,
     build the project again in the directory where the tar file was originally unpacked by running "gradle build" or "./gradlew build" again.
 
+    - After all MessagingNodes have reported back to the registry with a OVERLAY_NODE_REPORTS_TASK_FINISHED message, the Registry will wait for 15 seconds before issuing
+    requests for traffic summaries. This is to give enough time for the data to make it to their destination/sink node.
+
 
 CLASS/FILE DESCRIPTIONS:
     cs455.overlay.node:
