@@ -20,7 +20,6 @@ public class MessagingNode extends Node implements Protocol {
     private byte listeningAddressLength;
     private Socket registrySocket;
     private int nodeID;
-    private InteractiveMessagingNodeCommandParser commandParser;
 
     private RoutingTable routingTable;
     private int[] overlayNodeIDList;
@@ -54,7 +53,7 @@ public class MessagingNode extends Node implements Protocol {
                 messagingNode.sendRegistrationMessage();
 
                 //start command parser thread
-                Thread commandParserThread = messagingNode.startCommandParserThread();
+                messagingNode.startCommandParserThread();
             } catch (NumberFormatException e) {
                 LOG.error("Exception occurred in MessageNode main method", e);
             }
@@ -103,12 +102,9 @@ public class MessagingNode extends Node implements Protocol {
         }
     }
 
-    private Thread startCommandParserThread() {
-        //start command parser thread
-        this.commandParser = new InteractiveMessagingNodeCommandParser(this);
-        Thread commandParserThread = new Thread(this.commandParser);
-        commandParserThread.start();
-        return commandParserThread;
+    private void startCommandParserThread() {
+        InteractiveMessagingNodeCommandParser commandParser = new InteractiveMessagingNodeCommandParser(this);
+        (new Thread(commandParser)).start();
     }
 
     @Override
@@ -236,7 +232,6 @@ public class MessagingNode extends Node implements Protocol {
 
     private void handleRegistryRequestsTaskInitiate(Event event) {
         try {
-            LOG.info("This nodes ID = " + this.nodeID);
             RegistryRequestsTaskInitiateHandler handler = new RegistryRequestsTaskInitiateHandler(event);
             Random rand = new Random();
             int numberOfMessages = handler.getNumberOfMessages();
@@ -294,7 +289,6 @@ public class MessagingNode extends Node implements Protocol {
 
     private void handleOverlayNodeSendsData(Event event) {
         try {
-            LOG.info("This nodes ID = " + this.nodeID);
             OverlayNodeSendsDataHandler handler = new OverlayNodeSendsDataHandler(event);
             if (handler.getDestinationID() == this.nodeID) {
                 LOG.info("Received an OVERLAY_NODE_SENDS_DATA message destined for this node!");

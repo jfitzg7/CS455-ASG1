@@ -51,7 +51,7 @@ public class OverlayNodeSendsData extends Event implements Protocol {
 
             dout.flush();
             marshalledBytes = baOutputStream.toByteArray();
-            LOG.info("OVERLAY_NODE_SENDS_DATA bytes = " + Arrays.toString(marshalledBytes));
+            LOG.debug("OVERLAY_NODE_SENDS_DATA bytes = " + Arrays.toString(marshalledBytes));
 
             baOutputStream.close();
             dout.close();
