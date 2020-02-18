@@ -11,6 +11,7 @@ HOW TO BUILD THE ASSIGNMENT:
 
     2. Confirm that a newly created "build" directory shows up in the same directory where the tar file was unpacked.
 
+
 HOW TO EXECUTE the Registry node:
     1. Make sure that the build succeeded after building the project with either "gradle build" or "./gradlew build",
     and that there is a new "build" directory that shows up in the same directory where the tar file was unpacked.
@@ -23,6 +24,7 @@ HOW TO EXECUTE the Registry node:
 
     3. Once the Registry node is running, "Enter a registry command: " should appear at the command line and you can start
     issuing registry commands, registering MessagingNodes, set up the overlay, etc...
+
 
 HOW TO EXECUTE MessagingNodes:
     1. As with the Registry node, Make sure that the build succeeded after building the project with either "gradle build"
@@ -44,6 +46,13 @@ HOW TO EXECUTE MessagingNodes:
 
         4.2 ANOTHER IMPORTANT NOTE!: If you use the startup_script.sh, you will certainly have to change the "user" variable to your cs username, and very likely the "jar_path"
         variable will need to be changed as well!
+
+
+IMPORTANT THINGS TO NOTE:
+    - Most of my error handling is handled with log4j statements, I have turned logging off so most errors will not appear on the console if they do occur!
+    If you suspect errors are occurring, then I recommend turning on WARN and ERROR statements. You can do this by navigating to src/main/resources and modifying
+    the log4j2.xml file slightly. On line 12 of log4j2.xml, change <Root level="off"> to <Root level="warn"> to turn on WARN and ERROR statements. After doing this,
+    build the project again in the directory where the tar file was originally unpacked by running "gradle build" or "./gradlew build" again.
 
 
 CLASS/FILE DESCRIPTIONS:
