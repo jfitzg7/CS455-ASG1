@@ -3,13 +3,49 @@ Date: 2/18/2020
 Assignment: CS455 Spring 2020 - ASG1
 
 
-How to build the assignment:
+HOW TO BUILD THE ASSIGNMENT:
+    1. Enter "gradle build" at the command line in the same directory that the tar file was unpacked.
 
-How to execute the Registry node:
+        1.1 Alternatively, you can enter "./gradlew build" at the command line to use the gradle wrapper instead.
+        Use this if you don't have gradle in your PATH variable.
 
-How to execute the MessagingNodes:
+    2. Confirm that a newly created "build" directory shows up in the same directory where the tar file was unpacked.
 
-Class/File Descriptions:
+HOW TO EXECUTE the Registry node:
+    1. Make sure that the build succeeded after building the project with either "gradle build" or "./gradlew build",
+    and that there is a new "build" directory that shows up in the same directory where the tar file was unpacked.
+
+    2. To run the Registry node, enter "java -cp build/libs/ASG1-1.0.jar cs455.overlay.node.Registry <port number>"
+    at the command line in the same directory where the tar file was originally unpacked.
+
+        2.1 the "<port number>" can be any available port number. If the port number is already in use then the
+        Registry will need to be run again, but with a different port number.
+
+    3. Once the Registry node is running, "Enter a registry command: " should appear at the command line and you can start
+    issuing registry commands, registering MessagingNodes, set up the overlay, etc...
+
+HOW TO EXECUTE MessagingNodes:
+    1. As with the Registry node, Make sure that the build succeeded after building the project with either "gradle build"
+    or "./gradlew build", and that there is a new "build" directory that shows up in the same directory where the tar file was unpacked.
+
+    2. Make sure that there is a Registry node running before executing a MessagingNode
+
+    3. To run a MessagingNode, enter "java -cp build/libs/ASG1-1.0.jar cs455.overlay.node.MessagingNode <Registry IP address/hostname> <Registry port>"
+    at the command line in the same directory where the tar file was originally unpacked.
+
+        3.1 You can use either the IP address (i.e. 129.82.44.157) or the hostname (i.e. montgomery.cs.colostate.edu) for the <Registry IP address/hostname> argument.
+
+    4. You can start the MessagingNodes manually, or if you'd like to you can use my startup_script.sh to start 10 MessagingNodes remotely. For the sake of testing,
+    I would recommend starting the MessagingNodes manually just to be safe, but if you would like to save some time feel free to use the startup script.
+
+        4.1 IMPORTANT NOTE!: My startup script assumes that the Registry node is running on montgomery.cs.colostate.edu (129.82.44.157) on port 5001. Unless the Registry is
+        running on the montgomery machine at port 5001, the MessagingNodes started in the script will not be able to connect to the Registry node. You can manually change the
+        variables associated with the Registry IP address and port number in startup_script.sh if you would like to!
+
+        4.2 ANOTHER IMPORTANT NOTE!: If you use the startup_script.sh, you will have to change the user variable to your cs username!
+
+
+CLASS/FILE DESCRIPTIONS:
     cs455.overlay.node:
         - Node: An abstract class that contains a public EventFactory member and defines an abstract method
         called onEvent which the MessagingNode and Registry override and use to handle incoming messages
@@ -90,33 +126,34 @@ Class/File Descriptions:
 
     cs455.overlay.wireformats:
         - Event: An abstract class that represents the messages exchanged between nodes. It contains two abstract methods getType()
-        and getBytes()
+        and getBytes(). getType() returns the specified message type (2-12), and getBytes() returns a byte[] of the information contained
+        in that specific message.
 
         - EventFactory: Constructs the appropriate concrete Event based on the type received in a message.
 
-        - NodeReportsOverlaySetupStatus:
+        - NodeReportsOverlaySetupStatus: Concrete implementation of Event for the NODE_REPORTS_OVERLAY_SETUP_STATUS message.
 
-        - OverlayNodeReportsTaskFinished:
+        - OverlayNodeReportsTaskFinished: Concrete implementation of Event for the OVERLAY_NODE_REPORTS_TASK_FINISHED message.
 
-        - OverlayNodeReportsTrafficSummary:
+        - OverlayNodeReportsTrafficSummary: Concrete implementation of Event for the OVERLAY_NODE_REPORTS_TRAFFIC_SUMMARY message.
 
-        - OverlayNodeSendsData:
+        - OverlayNodeSendsData: Concrete implementation of Event for the OVERLAY_NODE_SENDS_DATA message.
 
-        - OverlayNodeSendsDeregistration:
+        - OverlayNodeSendsDeregistration: Concrete implementation of Event for the OVERLAY_NODE_SENDS_DEREGISTRATION message.
 
-        - OverlayNodeSendsRegistration:
+        - OverlayNodeSendsRegistration: Concrete implementation of Event for the OVERLAY_NODE_SENDS_REGISTRATION message.
 
         - Protocol: Defines the constants for each type of Event/message
 
-        - RegistryReportsDeregistrationStatus:
+        - RegistryReportsDeregistrationStatus: Concrete implementation of Event for the REGISTRY_REPORTS_DEREGISTRATION_STATUS message.
 
-        - RegistryReportsRegistrationStatus:
+        - RegistryReportsRegistrationStatus: Concrete implementation of Event for the REGISTRY_REPORTS_REGISTRATION_STATUS message.
 
-        - RegistryRequestsTaskInitiate:
+        - RegistryRequestsTaskInitiate: Concrete implementation of Event for the REGISTRY_REQUESTS_TASK_INITIATE message.
 
-        - RegistryRequestsTrafficSummary:
+        - RegistryRequestsTrafficSummary: Concrete implementation of Event for the REGISTRY_REQUESTS_TRAFFIC_SUMMARY message.
 
-        - RegistrySendsNodeManifest:
+        - RegistrySendsNodeManifest: Concrete implementation of Event for the REGISTRY_SENDS_NODE_MANIFEST message.
 
     src/main/resources:
         - log4j2.xml: The configuration file for log4j2

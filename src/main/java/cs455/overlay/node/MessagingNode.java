@@ -55,6 +55,7 @@ public class MessagingNode extends Node implements Protocol {
                 //start command parser thread
                 messagingNode.startCommandParserThread();
             } catch (NumberFormatException e) {
+                e.printStackTrace();
                 LOG.error("Exception occurred in MessageNode main method", e);
             }
         } else {

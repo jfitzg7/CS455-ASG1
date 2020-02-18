@@ -59,6 +59,7 @@ public class Registry extends Node implements Protocol {
                 System.out.println("Incorrect number of arguments provided");
             }
         } catch (IOException ioe) {
+            ioe.printStackTrace();
             LOG.error(ioe.getMessage(), ioe);
         }
     }
