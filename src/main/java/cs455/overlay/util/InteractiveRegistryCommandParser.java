@@ -30,20 +30,13 @@ public class InteractiveRegistryCommandParser implements Runnable {
                     handleSetupOverlayCommand(tokenList);
                 }
                 else if (tokenList.get(0).equals("start")) {
-                    if (tokenList.size() == 2) {
-                        try {
-                            int numberOfMessages = Integer.parseInt(tokenList.get(1));
-                            registry.initiateMessagingTask(numberOfMessages);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Unable to parse the number-of-messages, it must be an integer value");
-                        }
-                    }
-                    else {
-                        System.out.println("Incorrect number of arguments provided for start command");
-                    }
+                    handleStartCommand(tokenList);
                 }
                 else if (tokenList.get(0).equals("list-messaging-nodes")) {
                     registry.printRegisteredMessagingNodes();
+                }
+                else if (tokenList.get(0).equals("list-routing-tables")) {
+                    registry.printRoutingTables();
                 }
                 else {
                     System.out.println("Unknown argument provided");
@@ -82,6 +75,25 @@ public class InteractiveRegistryCommandParser implements Runnable {
         }
         else {
             return true;
+        }
+    }
+
+    private void handleStartCommand(ArrayList<String> tokenList) {
+        if (registry.getOverlaySetupSuccessStatus()) {
+            if (tokenList.size() == 2) {
+                try {
+                    int numberOfMessages = Integer.parseInt(tokenList.get(1));
+                    registry.initiateMessagingTask(numberOfMessages);
+                } catch (NumberFormatException e) {
+                    System.out.println("Unable to parse the number-of-messages, it must be an integer value");
+                }
+            }
+            else {
+                System.out.println("Incorrect number of arguments provided for start command");
+            }
+        }
+        else {
+            System.out.println("The overlay has not been successfully established yet!");
         }
     }
 

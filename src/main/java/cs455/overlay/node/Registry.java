@@ -8,8 +8,10 @@ import org.apache.logging.log4j.Logger;
 import cs455.overlay.transport.TCPServerThread;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.*;
 
 public class Registry extends Node implements Protocol {
@@ -17,6 +19,13 @@ public class Registry extends Node implements Protocol {
     private static Logger LOG = LogManager.getLogger(Registry.class);
 
     private RegistrationTable registrationTable;
+
+    private Map<Integer, RoutingTable> routingTableMap;
+
+    private int overlaySetupSuccessCounter;
+    private int overlaySetupFailureCounter;
+    private final Object overlaySetupLock = new Object();
+    private boolean overlaySetupSuccessStatus = false;
 
     private int overlayNodeReportsTaskFinishedCounter;
     private final Object taskFinishedLock = new Object();
@@ -29,6 +38,7 @@ public class Registry extends Node implements Protocol {
     private Registry() {
         this.eventFactory = new EventFactory();
         this.registrationTable = new RegistrationTable();
+        this.routingTableMap = new HashMap<>();
     }
 
     public static void main(String[] args) {
@@ -70,6 +80,7 @@ public class Registry extends Node implements Protocol {
                 else if (event.getType() == NODE_REPORTS_OVERLAY_SETUP_STATUS) {
                     LOG.info("Received an overlay setup status from one of the messaging nodes...");
                     LOG.debug("bytes received from NODE_REPORTS_OVERLAY_SETUP_STATUS message: " + Arrays.toString(event.getBytes()));
+                    handleNodeReportsOverlaySetupStatus(event);
                 }
                 else if (event.getType() == OVERLAY_NODE_REPORTS_TASK_FINISHED) {
                     LOG.info("An overlay node has reported that their task is finished...");
@@ -178,6 +189,10 @@ public class Registry extends Node implements Protocol {
     }
 
     public void setupOverlay(int routingTableSize) {
+        this.overlaySetupSuccessCounter = 0;
+        this.overlaySetupFailureCounter = 0;
+        this.overlaySetupSuccessStatus = false;
+        this.routingTableMap = new HashMap<>(); //reset routingTableMap
         int[] nodeIDList = registrationTable.getNodeIDList();
         Arrays.sort(nodeIDList);
         LOG.debug("The sorted nodeIDList = " + Arrays.toString(nodeIDList));
@@ -197,6 +212,8 @@ public class Registry extends Node implements Protocol {
                 RoutingEntry entry = new RoutingEntry(IPAddress, portNumber, nextHopID, hopsAway);
                 routingTable.addRoutingEntry(entry);
             }
+            //add newly created routingTable to routingTableMap
+            this.routingTableMap.put(nodeIDList[i], routingTable);
             RegistrySendsNodeManifest nodeManifest = new RegistrySendsNodeManifest(routingTableSize, routingTable, nodeIDList);
             Socket messagingNodeSocket = registrationTable.getEntry(nodeIDList[i]).getSocket();
             try {
@@ -206,6 +223,87 @@ public class Registry extends Node implements Protocol {
                 LOG.error("Unable to send REGISTRY_SENDS_NODE_MANIFEST to messaging node " + nodeIDList[i], e);
             }
         }
+        LOG.debug("Waiting for nodes to report overlay setup status...");
+        waitForNodesToReportOverlaySetupStatus();
+        LOG.debug("All nodes have reported overlay setup statuses!");
+        if (this.overlaySetupFailureCounter != 0) {
+            this.overlaySetupSuccessStatus = false;
+            LOG.warn("Not all messaging nodes were able to successfully setup the overlay!");
+        }
+        else {
+            System.out.println("Registry now ready to initiate tasks");
+            this.overlaySetupSuccessStatus = true;
+        }
+    }
+
+    private void waitForNodesToReportOverlaySetupStatus() {
+        int numberOfMessagingNodes = this.registrationTable.countEntries();
+
+        try {
+            synchronized (overlaySetupLock) {
+                while ((overlaySetupSuccessCounter + overlaySetupFailureCounter) < numberOfMessagingNodes) {
+                    //in case one of the messaging nodes dies, the timeout is set for 30 seconds to avoid hanging
+                    overlaySetupLock.wait(30000);
+                }
+            }
+        } catch (InterruptedException e) {
+            LOG.error("An error occurred while waiting for messaging nodes to report overlay setup status", e);
+        }
+    }
+
+    private void handleNodeReportsOverlaySetupStatus(Event event) {
+        try {
+            NodeReportsOverlaySetupStatusHandler handler = new NodeReportsOverlaySetupStatusHandler(event);
+            int successStatus = handler.getSuccessStatus();
+            if (successStatus == -1) {
+                incrementOverlaySetupFailureCounter();
+            }
+            else {
+                incrementOverlaySetupSuccessCounter();
+            }
+        } catch (IOException e) {
+            LOG.error("Unable to handle NODE_REPORTS_OVERLAY_SETUP_STATUS message", e);
+        }
+    }
+
+    private void incrementOverlaySetupSuccessCounter() {
+        synchronized (overlaySetupLock) {
+            this.overlaySetupSuccessCounter++;
+            overlaySetupLock.notify();
+        }
+    }
+
+    private void incrementOverlaySetupFailureCounter() {
+        synchronized (overlaySetupLock) {
+            this.overlaySetupFailureCounter++;
+            overlaySetupLock.notify();
+        }
+    }
+
+    public void printRoutingTables() {
+        for(Map.Entry<Integer, RoutingTable> entry: this.routingTableMap.entrySet()) {
+            int currentNodeID = entry.getKey();
+            RoutingTable routingTable = entry.getValue();
+            System.out.println("Routing table for node " + currentNodeID + ":");
+            int[] nodeIDList = routingTable.getNodeIDListSortedByHopsAway();
+            for(int nodeID : nodeIDList) {
+                try {
+                    RoutingEntry routingEntry = routingTable.getRoutingEntryByNodeID(nodeID);
+                    String IPAddress = InetAddress.getByAddress(routingEntry.getIPAddress()).getHostAddress();
+                    int portNumber = routingEntry.getPortNumber();
+                    int hopsAway = routingEntry.getHopsAway();
+                    System.out.println("\tnodeID = " + nodeID + ", IP address = " + IPAddress + ", Port number = " + portNumber + ", Hops away = " + hopsAway);
+                } catch (UnknownHostException e) {
+                    LOG.error("Unable to convert IP address for node " + nodeID + " to string while printing the routing tables");
+                }
+
+            }
+            System.out.println("\n\n");
+        }
+    }
+
+    public boolean getOverlaySetupSuccessStatus() {
+        return this.overlaySetupSuccessStatus;
     }
 
     public void initiateMessagingTask(int numberOfMessages) {
@@ -225,7 +323,7 @@ public class Registry extends Node implements Protocol {
         waitForNodesToReportTaskFinished();
         LOG.info("All messaging nodes have reported task finished! sending requests for traffic summary in 10 seconds...");
         try {
-            Thread.sleep(10000);
+            Thread.sleep(15000);
         } catch(InterruptedException e) {
             LOG.error("the thread was interrupted while waiting before printing traffic summaries", e);
         }
@@ -340,10 +438,10 @@ public class Registry extends Node implements Protocol {
             totalSendSummation += sendSummation;
             long receiveSummation = summary.getReceiveSummation();
             totalReceiveSummation += receiveSummation;
-            System.out.printf("%20s%20s%20s%20s%30s%30s\n", "Node " + nodeID, "" + sentPackets, "" + receivedPackets,
+            System.out.printf("%-20s%20s%20s%20s%30s%30s\n", "Node " + nodeID, "" + sentPackets, "" + receivedPackets,
                     "" + relayedPackets, "" + sendSummation, "" + receiveSummation);
         }
-        System.out.printf("%20s%20s%20s%20s%30s%30s\n", "Sum", "" + totalSentPackets, "" + totalReceivedPackets,
+        System.out.printf("%-20s%20s%20s%20s%30s%30s\n", "Sum", "" + totalSentPackets, "" + totalReceivedPackets,
                 "" + totalRelayedPackets, "" + totalSendSummation, "" + totalReceiveSummation);
     }
 
