@@ -36,13 +36,14 @@ HOW TO EXECUTE MessagingNodes:
         3.1 You can use either the IP address (i.e. 129.82.44.157) or the hostname (i.e. montgomery.cs.colostate.edu) for the <Registry IP address/hostname> argument.
 
     4. You can start the MessagingNodes manually, or if you'd like to you can use my startup_script.sh to start 10 MessagingNodes remotely. For the sake of testing,
-    I would recommend starting the MessagingNodes manually just to be safe, but if you would like to save some time feel free to use the startup script.
+    I would highly recommend starting the MessagingNodes manually just to be safe, but if you would like to save some time feel free to use the startup script.
 
         4.1 IMPORTANT NOTE!: My startup script assumes that the Registry node is running on montgomery.cs.colostate.edu (129.82.44.157) on port 5001. Unless the Registry is
         running on the montgomery machine at port 5001, the MessagingNodes started in the script will not be able to connect to the Registry node. You can manually change the
         variables associated with the Registry IP address and port number in startup_script.sh if you would like to!
 
-        4.2 ANOTHER IMPORTANT NOTE!: If you use the startup_script.sh, you will have to change the user variable to your cs username!
+        4.2 ANOTHER IMPORTANT NOTE!: If you use the startup_script.sh, you will certainly have to change the "user" variable to your cs username, and very likely the "jar_path"
+        variable will need to be changed as well!
 
 
 CLASS/FILE DESCRIPTIONS:
